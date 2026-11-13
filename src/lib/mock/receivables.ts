@@ -10,6 +10,18 @@
  * An empty string means the party did not respond to that touch.
  */
 import type { PartyLedgerRow, RecoveryOutreachRow, ConversationEntry } from '../data/receivables';
+import {
+  MGR,
+  SPECIAL,
+  VOICES,
+  type CallStage,
+  type Line,
+  type MailMsg,
+  type MailStage,
+  type Sg,
+  type Voice,
+  type WaStage,
+} from '../../app/accounts-receivable/_data/outreachStories';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -251,7 +263,7 @@ const PARTIES: Party[] = [
     email: 'shreeganesh.nagpur@gmail.com', phone: '+91 98230 14470', kind: 'Kirana Wholesaler', terms: 15,
     invs: [{ age: 36, amt: 112740, items: 'Raw Sunflower Seeds 250g x 120, Premium Arabian Dates 500g x 150, Daily Super Health Mix 160g x 150' }],
     wa: ['', '~Beta bimar hai, hospital mein hoon. Next week bhejta hu.', '', '~Next week pakka.'], call: ['', '~Said he is travelling, will pay by Saturday.'],
-    promise: 2, next: 'Check Saturday payment, else hold next order', sum: 'Dilip has had family health issues and promised payment by Saturday.',
+    promise: 1, next: 'Check Saturday payment, else hold next order', sum: 'Dilip has had family health issues and promised payment by Saturday.',
   },
   {
     name: 'Rathod & Sons Wholesale', owner: 'Hitesh Rathod', city: 'Surat', gstin: '24AAJFR5518M1ZS',
@@ -324,7 +336,7 @@ const PARTIES: Party[] = [
     ],
     wa: ['', '~PO closure pending at our end, finance needs TDS certificate for last quarter.', '~TDS cert received, now needs CFO sign-off.', ''],
     em: ['~Kindly share Form 16A for Q1 and Q2.', '+Form 16A received, payment in next batch.'], call: ['~Preeti asked to follow up after finance run on Friday.', '+Confirmed in Friday payment batch.'],
-    promise: 1, stage: 'Promise to Pay', next: 'Confirm receipt of Friday batch payment',
+    promise: 0, stage: 'Promise to Pay', next: 'Confirm receipt of Friday batch payment',
     sum: 'Preeti confirmed the invoice is in Friday\'s batch after we shared the TDS certificates.',
   },
   {
@@ -518,64 +530,550 @@ function buildLedger(): PartyLedgerRow[] {
 
 /* ------------------------------ Outreach ------------------------------ */
 
-const sign = (s: string): 'positive' | 'neutral' | 'negative' => (s[0] === '+' ? 'positive' : s[0] === '-' ? 'negative' : 'neutral');
+const sign = (s: string): Sg => (s[0] === '+' ? '+' : s[0] === '-' ? '-' : '~');
 const text = (s: string) => s.slice(1);
+const SENT_WORD = { '+': 'positive', '~': 'neutral', '-': 'negative' } as const;
 const SENTIMENT_SCORE = { positive: 78, neutral: 50, negative: 20 };
 
-interface Touch {
-  ch: 'wa' | 'email' | 'call';
-  idx: number;
-  at: number;
-  reply: string;
-  replyAt: number;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const dmon = (ms: number) => {
+  const d = new Date(ms);
+  return `${p2(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
+const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-IN')}`;
+const AT = (ago: number, hm: string) => {
+  const [h, m] = hm.split(':').map(Number);
+  const d = new Date(NOW - ago * DAY);
+  d.setHours(h, m, 0, 0);
+  return d.getTime();
+};
+const MIN = 60_000;
+/** Keeps follow-up replies inside working hours (08:00 to 21:00). */
+function humanize(ts: number, seed: number): number {
+  const d = new Date(ts);
+  const h = d.getHours();
+  if (h >= 8 && h < 21) return ts;
+  if (h >= 21) d.setDate(d.getDate() + 1);
+  d.setHours(9 + (seed % 3), (seed * 7) % 60, 0, 0);
+  return d.getTime();
+}
+const CUTOFF = NOW - 10 * MIN;
+
+const BANK = 'Bank details: Happilo International Pvt Ltd | HDFC Bank, Indiranagar Branch, Bengaluru | A/c No. 50200067841932 | IFSC HDFC0000342';
+const H_FROM = 'Neha Rao <accounts@happilo.com>';
+const H_SIG = 'Regards,\nNeha Rao\nAccounts Receivable, Happilo International Pvt Ltd\nBengaluru | care@happilo.com | +91 88844 84000';
+
+function utrFor(seed: string): string {
+  const h = hashStr(seed);
+  const h2 = hashStr(seed + 'x');
+  return String(400000000000 + ((h * 7919 + h2) % 599999999999)).padStart(12, '0');
 }
 
-function plan(p: Party, overdueSigned: number): Touch[] {
-  const touches: Touch[] = [];
-  const base = hashStr(p.name);
-  const mk = (ch: Touch['ch'], offsets: number[], replies: string[] | undefined) => {
-    offsets.forEach((off, idx) => {
-      if (off > overdueSigned) return;
-      const dueMs = NOW - overdueSigned * DAY;
-      const hourOfDay = 10 + ((base + idx * 7) % 7);
-      const day0 = new Date(dueMs + off * DAY);
-      day0.setHours(hourOfDay, (base + idx * 13) % 60, 0, 0);
-      const at = Math.min(day0.getTime(), NOW - 2 * HOUR);
-      const reply = replies?.[idx] ?? '';
-      const replyAt = Math.min(at + (1 + ((base + idx) % 18)) * HOUR, NOW - 20 * 60_000);
-      touches.push({ ch, idx, at, reply, replyAt });
+/** Credit-note numbers, assigned in the same order as the ledger. */
+const CN_NO: Map<Inv, string> = (() => {
+  const m = new Map<Inv, string>();
+  let seq = 27;
+  PARTIES.forEach((p) => {
+    [...p.invs].sort((a, b) => b.age - a.age).forEach((inv) => {
+      if (inv.cn) m.set(inv, `HP/26-27/CN/${String(seq++).padStart(4, '0')}`);
     });
+  });
+  return m;
+})();
+
+interface PCtx {
+  p: Party;
+  v: Voice;
+  lis: LedgerInv[];
+  open: LedgerInv[];
+  target: LedgerInv;
+  cleared: boolean;
+  od: number;
+  prev?: LedgerInv;
+  mgr: [string, string];
+  vars: Record<string, string>;
+  lastPayAgo: number | null;
+}
+
+function pendingAt(li: LedgerInv, ago: number): number {
+  let paid = 0;
+  (li.inv.pay ?? []).forEach((r) => { if (r[0] >= ago) paid += r[1] + (r[2] ?? 0); });
+  if (li.inv.cn && li.inv.cn[0] >= ago) paid += li.inv.cn[1];
+  return Math.max(0, li.inv.amt - paid);
+}
+
+function itemNames(inv: Inv): string[] {
+  return inv.items.split(', ').map((x) => x.replace(/ x \d+$/, '').replace(/^Sales - /, ''));
+}
+
+function buildCtx(p: Party, lis: LedgerInv[], target: LedgerInv, cleared: boolean, signed: number): PCtx {
+  const open = lis.filter((l) => l.balance > 0);
+  const others = lis.filter((l) => l !== target);
+  const prev = others.filter((l) => l.balance === 0 && (l.inv.pay?.length ?? 0) > 0).sort((a, b) => b.inv.age - a.inv.age)[0];
+  const mgr = MGR[p.city] ?? ['Divya Shenoy', 'divya.shenoy@happilo.com'];
+  const names = itemNames(target.inv);
+  const second = open.find((l) => l !== target);
+  const first = p.owner.split(' ')[0].replace(/\.$/, '');
+  const lastPay = target.inv.pay && target.inv.pay.length ? Math.min(...target.inv.pay.map((r) => r[0])) : null;
+  const promMs = NOW + (p.promise ?? 3) * DAY;
+  const cnInv = [target, ...others].find((l) => l.inv.cn);
+  const prevPay = prev?.inv.pay ? prev.inv.pay[prev.inv.pay.length - 1] : undefined;
+  const vars: Record<string, string> = {
+    first, owner: p.owner, party: p.name, city: p.city, bill: target.invNo, bill2: second?.invNo ?? '',
+    amt1: rs(target.inv.amt), bal: rs(cleared ? target.inv.amt : target.balance), amt2: second ? rs(second.balance) : '',
+    tot: rs(open.reduce((s, l) => s + l.balance, 0)), due: dmon(target.dueMs), invdate: dmon(target.dateMs), terms: String(p.terms),
+    items: names.slice(0, 2).join(' and '), item1: names[0], mgr: mgr[0].split(' ')[0] + ' ' + mgr[0].split(' ')[1], cnNo: cnInv ? CN_NO.get(cnInv.inv) ?? '' : '',
+    cn: cnInv?.inv.cn ? rs(cnInv.inv.cn[1]) : '', prom: dmon(promMs), promDay: DAYS[new Date(promMs).getDay()],
+    pbill: prev?.invNo ?? '', pamt: prev ? rs(prev.inv.amt) : '', pdue: prev ? dmon(prev.dueMs) : '',
+    putr: prev ? utrFor(prev.invNo) : '', utr: utrFor(target.invNo), prevpaid: prevPay ? rs(prevPay[1]) : '',
   };
-  const wa0 = overdueSigned <= -3 ? Math.max(-(p.terms - 2), overdueSigned) : -3;
-  mk('wa', [wa0, ...WA_OFFSETS.slice(1)], p.wa);
-  mk('email', EM_OFFSETS, p.em);
-  mk('call', CALL_OFFSETS, p.call);
-  return touches;
+  return { p, v: VOICES[p.name] ?? {}, lis, open, target, cleared, od: signed, prev, mgr, vars, lastPayAgo: lastPay, };
 }
 
-function waText(first: string, idx: number, bill: string, amt: string, off: number, due: string): string {
-  switch (idx) {
-    case 0: return `Hi ${first}, Happilo accounts here. Invoice ${bill} (${amt}) falls due on ${due}. Sharing it for your records. Let us know if you need another copy.`;
-    case 1: return `Hi ${first}, invoice ${bill} (${amt}) was due on ${due}. Could you share the payment date? Bank details are printed on the invoice.`;
-    case 2: return `${first}, following up on ${bill}. ${amt} is ${off} days past due. Please confirm when we can expect the transfer and send the UTR once it is done.`;
-    case 3: return `Dear ${first}, ${amt} against ${bill} is now ${off} days overdue. Please release it this week, otherwise we will have to hold your next dispatch.`;
-    default: return `${first}, one more reminder on ${bill}, ${amt}, ${off} days overdue. Our sales head has been informed. Please call Neha on +91 88844 84000 today so we can close this out.`;
+function fill(s: string, c: PCtx, extra: Record<string, string>): string {
+  return s.replace(/\{(\w+)\}/g, (_, k) => extra[k] ?? c.vars[k] ?? `{${k}}`);
+}
+
+/** Pending amounts at a point in time: due invoices if any, else the invoice in play. */
+function amtAt(c: PCtx, ago: number, bills: LedgerInv[]): number {
+  const t = NOW - ago * DAY;
+  const due = bills.filter((l) => l.dueMs <= t && pendingAt(l, ago) > 0);
+  if (due.length) return due.reduce((s, l) => s + pendingAt(l, ago), 0);
+  return bills.reduce((s, l) => s + (l.dateMs <= t ? pendingAt(l, ago) : 0), 0) || pendingAt(bills[0], ago);
+}
+
+/* ---- Generic stories for the standard journeys ---- */
+
+const PREV_EXCUSE = ['Sorry sir, will release in a day or two.', 'Payment is in process, will send the UTR once done.', 'Ji, accountant is on it. Will do tomorrow.'];
+
+function genWa(c: PCtx): WaStage[] {
+  const { p, v, target, od } = c;
+  const T = p.terms;
+  const st: WaStage[] = [];
+  const age = target.inv.age;
+
+  // Earlier history: previous invoice, or the order confirmation
+  if (c.prev) {
+    const pv = c.prev;
+    const payAgo = Math.min(...(pv.inv.pay ?? [[0]]).map((r) => r[0]));
+    const dueAgo = Math.floor((NOW - pv.dueMs) / DAY);
+    if (payAgo < dueAgo) {
+      st.push({ hist: true, ago: Math.max(dueAgo - 1, payAgo + 1), hm: '11:40', s: '~', lines: [
+        ['H', 'Hi {first}, invoice {pbill} ({pamt}) was due on {pdue}. Could you share the payment date? Bank details are printed on the invoice.'],
+        ['C', PREV_EXCUSE[hashStr(p.name) % 3], 140],
+        ['H', 'Thank you. Please send the UTR once it is done.', 10],
+      ] });
+    }
+    const pr = (pv.inv.pay ?? [])[(pv.inv.pay ?? []).length - 1];
+    const tdsNote = pr && pr[2] ? ` after TDS of ${rs(pr[2])}` : '';
+    st.push({ hist: true, ago: payAgo, hm: '12:20', s: '+', lines: [
+      ['H', 'Hi {first}, checking if the payment for {pbill} has been released.', 0],
+      ['C', v.prevPay ?? `Payment released today, UTR {putr}. Rs ${pr ? Math.round(pr[1]).toLocaleString('en-IN') : ''}${tdsNote}.`, 95],
+      ['H', 'Received with thanks, {first}. {pbill} is now settled in our books.', 35],
+    ] });
+  } else {
+    st.push({ hist: true, ago: age + 2, hm: '16:10', s: '+', lines: [
+      ['H', 'Hi {first}, Happilo accounts here. Your order of {items} is confirmed. Credit terms of {terms} days from the invoice date are in place for your account.', 0],
+      ['C', 'Thanks. Please dispatch as early as possible, stock is running low.', 85],
+      ['H', 'Sure. It will leave our Bengaluru warehouse tomorrow morning and I will share the invoice once it is delivered.', 12],
+      ['C', 'Okay.', 20],
+    ] });
   }
-}
 
-function emailText(owner: string, idx: number, bill: string, amt: string, off: number, due: string): string {
-  const sig = 'Regards,\nNeha Rao\nAccounts Receivable, Happilo International Pvt Ltd\nBengaluru | care@happilo.com | +91 88844 84000';
-  switch (idx) {
-    case 0: return `Subject: Statement of account and invoice ${bill}\n\nDear ${owner},\n\nPlease find attached your statement of account and invoice ${bill} for ${amt}, which was due on ${due}. Kindly let us know the expected payment date.\n\n${sig}`;
-    case 1: return `Subject: Reminder - ${bill} pending for ${off} days\n\nDear ${owner},\n\nThis is a gentle reminder that ${amt} against ${bill} is still outstanding. If payment is already released, please share the UTR so we can match it.\n\n${sig}`;
-    case 2: return `Subject: Overdue payment - ${bill}\n\nDear ${owner},\n\nInvoice ${bill} is now ${off} days past due (${amt}). We would appreciate payment this week. If there is any issue with the goods or documents, please tell us so that we can resolve it.\n\n${sig}`;
-    default: return `Subject: Final notice before supply hold - ${bill}\n\nDear ${owner},\n\n${amt} against ${bill} is overdue by ${off} days despite repeated reminders. Further dispatches will be held until the account is regularised. Please call me on +91 88844 84000 to discuss.\n\n${sig}`;
+  // Current invoice cycle
+  st.push({ ago: od + T - 2, hm: '11:30', s: '+', lines: [
+    ['H', 'Hi {first}, Happilo accounts here. Your consignment was delivered yesterday. Invoice {bill} for {amt1} is attached for your records. Terms are {terms} days, due on {due}.', 0, ['Invoice_' + target.invNo.replace(/\//g, '_') + '.pdf']],
+    ['C', v.recv ?? 'Received, thank you.', 95],
+    ['H', 'Great. Please let me know if the GST invoice needs any change before you book it.', 12],
+  ] });
+  const ack = v.ack ?? 'Noted, thanks for the reminder.';
+  st.push({ ago: od < -3 ? Math.min(1, od + T - 3) : od + 3, hm: '12:10', s: '+', lines: [
+    ['H', 'Hi {first}, a small reminder that invoice {bill} ({amt}) falls due on {due}. Sharing the bank details again for convenience.', 0],
+    ['H', 'Happilo International Pvt Ltd | HDFC Bank, Indiranagar, Bengaluru | A/c 50200067841932 | IFSC HDFC0000342', 1],
+    ['C', ack, 190],
+    ['H', 'Noted, thank you. Please share the UTR once it is done.', 12],
+  ] });
+
+  const ex1 = v.ex1 ?? '~Sorry, this slipped. Will arrange it soon.';
+  st.push({ off: 1, hm: '10:50', s: sign(ex1), lines: [
+    ['H', 'Hi {first}, invoice {bill} ({amt}) was due on {due}. Could you share the payment date? Bank details are printed on the invoice.', 0],
+    ['C', text(ex1), 140],
+    ['H', 'Understood, {first}. Can you give me a date by which we can expect the transfer?', 10],
+    ['C', v.d1 ?? 'By end of this week.', 25],
+    ['H', 'Thank you, noted. I will check with you again then.', 6],
+  ] });
+
+  const ex2 = v.ex2 ?? '~Will do this week, bit busy with festive orders.';
+  st.push({ off: 6, hm: '12:25', s: sign(ex2), lines: [
+    ['H', '{first}, following up on {bill}. {amt} is {days} days past due. Please confirm when the transfer will go and send the UTR once it is done.', 0],
+    ['C', text(ex2), 210],
+    ['H', 'Is there any problem with the goods or the invoice? If yes, please tell me so that I can get it resolved.', 10],
+    ['C', v.d2 ?? 'No, all fine. Only timing.', 40],
+    ['H', 'Okay, I have noted it. Sending the statement of account so that your accountant can match it.', 8, ['Statement_of_Account_Nov2026.pdf']],
+  ] });
+
+  const push = v.push ?? '~Will see this week.';
+  const pushLines: Line[] = [
+    ['H', 'Dear {first}, {amt} against {bill} is now {days} days overdue. Please release it this week, otherwise we will have to hold your next dispatch.', 0],
+    ['C', text(push), 120],
+    ['H', 'I do not want to stop your supplies, {first}. Even a part payment this week will help me hold it back.', 12],
+  ];
+  const p6 = v.p6 ?? (sign(push) === '+' ? '+Yes, noted.' : sign(push) === '~' ? '~Let me check and tell you.' : '-I will see.');
+  if (p6) pushLines.push(['C', text(p6), 55]);
+  st.push({ off: 14, hm: '11:15', s: sign(push), lines: pushLines });
+
+  st.push({ off: 25, hm: '15:35', s: '~', lines: [
+    ['H', '{first}, one more reminder on {bill}, {amt}, {days} days overdue. Our sales manager {mgr} has been informed. Please call me on +91 88844 84000 today so we can close this out.', 0],
+    ...(sign(push) === '-' ? [] : ([['C', 'Will call you tomorrow.', 100], ['H', 'Thank you, I will wait for your call.', 6]] as Line[])),
+  ] });
+  st.push({ off: 38, hm: '12:05', s: '~', lines: [
+    ['H', '{first}, {amt} is now {days} days overdue and your account is on supply hold from today. We will release dispatches as soon as the payment is received.', 0],
+    ['C', 'Ok, understood.', 80],
+  ] });
+
+  // Receipts on the current invoice
+  const pays = target.inv.pay ?? [];
+  let cum = 0;
+  pays.forEach((r, k) => {
+    cum += r[1] + (r[2] ?? 0);
+    const left = target.inv.amt - cum - (target.inv.cn && target.inv.cn[0] >= r[0] ? target.inv.cn[1] : 0);
+    const net = r[2] ? ` after TDS of ${rs(r[2])}` : '';
+    const txt = v.payText?.[k] ?? `Payment released today, UTR {utr}. Amount ${rs(r[1])}${net}.`;
+    const isLast = k === pays.length - 1;
+    const closing = left > 0 && isLast ? `Received ${rs(r[1])} against {bill}, thank you {first}. The balance on this invoice is ${rs(c.cleared ? 0 : target.balance)}.`
+      : left > 0 ? `Received ${rs(r[1])} against {bill}, thank you {first}. The balance on this invoice is ${rs(left)}.`
+      : 'Received with thanks, {first}. {bill} is now settled in our books.';
+    st.push({ ago: r[0], hm: '12:30', s: '+', lines: [
+      ['H', 'Hi {first}, checking if the payment for {bill} has been released.', 0],
+      ['C', txt.replace('{utr}', utrFor(target.invNo + k)), 110],
+      ['H', closing, 35],
+    ] });
+  });
+
+  if (v.claim) {
+    const cl = v.claim;
+    st.push({ ago: cl.ago, hm: cl.hm, s: '+', lines: [
+      ['H', 'Hi {first}, checking if the payment for {bill} has been released.', 0],
+      ['C', cl.text ?? 'Payment done today, UTR {utr}.', 45, cl.att],
+      ['H', 'Thank you {first}. We will confirm once it reflects in our account, NEFT usually takes a few hours on a working day.', 18],
+    ] });
   }
+  return st;
 }
 
-function callContent(first: string, bill: string, amt: string, reply: string): string {
-  if (!reply) return `Called twice, no answer. Will try again next working day.`;
-  return `Neha (Happilo Accounts): Namaste ${first} ji, Neha from Happilo International, Bengaluru. Calling about ${bill}, ${amt}.\n${first}: ${text(reply)}\nNeha: Thank you, I have noted that. I will send the details on WhatsApp.`;
+const MAIL_OFFS: Array<[number, 'reminder' | 'overdue' | 'final']> = [[2, 'reminder'], [10, 'overdue'], [22, 'overdue'], [36, 'final'], [52, 'final']];
+
+function genEm(c: PCtx): MailStage[] {
+  const { p, v, target, od } = c;
+  const T = p.terms;
+  const st: MailStage[] = [];
+  const hrsOf = (i: number) => 3 + ((hashStr(p.name) + i * 5) % 22);
+  st.push({ ago: od + T - 2, hm: '11:20', kind: 'invoice', s: '+', thread: [{ w: 'C', hrs: hrsOf(0), body: (v.recv ?? 'Received, thank you.') }] });
+  let replies = (v.em ?? []).slice();
+  let receipt: string | null = null;
+  if (c.cleared && replies.length && replies[replies.length - 1].startsWith('+')) receipt = text(replies.pop() as string);
+  MAIL_OFFS.forEach(([off, kind], j) => {
+    const r = replies[j] ?? '';
+    const sg: Sg = r ? sign(r) : '~';
+    const thread: MailMsg[] = [];
+    if (r) {
+      thread.push({ w: 'C', hrs: hrsOf(j + 1), body: text(r) });
+      if (sg === '-') {
+        thread.push({ w: 'H', hrs: 3, fwd: true, body: '{mgrFirst}, please see the mail below from {party}. Invoice {bill}, open amount {amt}. Could you speak with {first} ji and let me know what is holding up the payment?' });
+        thread.push({ w: 'H', hrs: 4, cc: true, body: 'Understood. I have looped in our sales manager {mgr}, who will speak with you. We will revert with an update within two working days.' });
+      } else if (sg === '~') {
+        thread.push({ w: 'H', hrs: 3, att: ['Statement_of_Account_Nov2026.pdf'], body: 'Thank you for the quick revert. The statement of account is attached for your reference. Kindly confirm the expected payment date so that we can note it.' });
+      } else {
+        thread.push({ w: 'H', hrs: 3, body: 'Thank you, noted. We will match the receipt against {bill} on arrival. Please share the UTR once the payment is released.' });
+      }
+    }
+    st.push({ off, kind, s: sg, hm: `${10 + ((hashStr(p.name) + j) % 4)}:${p2((hashStr(p.name) * (j + 3)) % 60)}`, thread });
+  });
+  if (c.prev) {
+    const pv = c.prev;
+    const payAgo = Math.min(...(pv.inv.pay ?? [[0]]).map((r) => r[0]));
+    const pr = (pv.inv.pay ?? [])[(pv.inv.pay ?? []).length - 1];
+    st.push({ hist: true, ago: payAgo + 1, hm: '15:20', kind: 'reminder', s: '+', thread: [
+      { w: 'C', hrs: 20, att: ['Payment_Advice_UTR_' + utrFor(pv.invNo) + '.pdf'], body: `Payment of ${rs(pr ? pr[1] : pv.inv.amt)} for ${pv.invNo} has been released today. UTR {putr}. Advice attached.` },
+      { w: 'H', hrs: 2, body: 'Thank you, we have received the payment and {pbill} is now settled.' },
+    ] });
+  }
+  if (receipt !== null) {
+    const lastAgo = c.lastPayAgo ?? 0;
+    st.push({ ago: lastAgo + 1, hm: '15:30', kind: 'reminder', s: '+', thread: [
+      { w: 'C', hrs: 19, att: ['Payment_Advice.pdf'], body: receipt },
+      { w: 'H', hrs: 2, body: 'Thank you, we have received the payment and {bill} is now settled in our books.' },
+    ] });
+  }
+  return st;
+}
+
+const PROBES: string[] = [
+  'I understand, {first} ji. Is there anything on our side that I can help sort out?',
+  'Is it only the timing then, or is there any issue with the goods or the invoice?',
+];
+
+const CALLS_DEFAULT: Record<string, string[]> = {
+  'Balaji Wholesale Mart': ['~Ramesh ji asked for ten more days.'],
+  'Hotel Grand Orchid': ['', '~Imran said the cheque is signed and waiting for the GM.', '~Confirmed the cheque will be couriered in two days.'],
+  'Lakshmi Provision Stores Wholesale': ['~Muthu said he will pay on Monday after the Diwali rush.'],
+  'Mehta Agro Foods': ['', '+Chirag confirmed the balance next Thursday.'],
+  'Bharat Gift Hampers': ['', '+Kunal confirmed the balance by 26 Nov.'],
+  'Lakeview Residency Hotels': ['~Anand Rao said the bill is with the GM for approval.'],
+  'Sri Manjunatha Traders': ['', '+Manjunath said he will pay today.'],
+  'Hotel Sai Palace': ['', '~Raghav said the accountant is on leave.'],
+};
+
+function genCall(c: PCtx): CallStage[] {
+  const { p, v } = c;
+  const outcomes = p.call ?? CALLS_DEFAULT[p.name] ?? [];
+  const OFFS = [7, 16, 28, 45, 65];
+  const st: CallStage[] = [];
+  const connectedIdx: number[] = [];
+  OFFS.forEach((_, i) => { if (outcomes[i]) connectedIdx.push(i); });
+  const lastConn = connectedIdx.length ? connectedIdx[connectedIdx.length - 1] : -1;
+  OFFS.forEach((off, i) => {
+    const o = outcomes[i];
+    if (o === undefined) return;
+    const hm = `${11 + ((hashStr(p.name) + i * 3) % 6)}:${p2((hashStr(p.name) * (i + 2)) % 60)}`;
+    if (o === '') {
+      st.push(i % 2 === 0
+        ? { off, hm, status: 'no-answer', summary: 'No answer. Will try again next working day.' }
+        : { off, hm, status: 'voicemail', summary: 'Voicemail left asking for a call back.' });
+      return;
+    }
+    const sg = sign(o);
+    const S = [v.ex1, v.d1, v.ex2, v.d2, v.push].map((x, k) => (x === undefined ? undefined : k === 0 || k === 2 || k === 4 ? text(x) : x));
+    const window = i === 0 ? [S[0], S[1]] : i === 1 ? [S[2], S[3]] : [S[4], S[3]];
+    const a = window[0] ?? text(o);
+    const b = window[1] ?? 'Just a matter of timing, nothing else.';
+    const reason: Line[] = [
+      ['C', a], ['H', PROBES[0]], ['C', b], ['H', PROBES[1]],
+      ['C', sg === '-' ? 'The goods are fine. I am not in a position to discuss it today.' : 'No no, goods are fine. Only timing, nothing else.'],
+    ];
+    const isLast = i === lastConn;
+    const promised = sg !== '-' && isLast && p.promise !== undefined && p.promise >= 0;
+    const dateWord = promised ? `${DAYS[new Date(NOW + (p.promise as number) * DAY).getDay()]}, ${dmon(NOW + (p.promise as number) * DAY)}` : 'this week';
+    const commit: Line[] = sg === '-'
+      ? [['H', 'Could you give me any date at all, {first} ji?'], ['C', 'Not now. I will tell you when I can.'], ['H', 'Okay, I will keep it noted and not call for a few days.'], ['C', 'Fine.']]
+      : [['H', 'So by when can I note the payment, {first} ji?'], ['C', promised ? `${dateWord}. Pakka.` : 'Let me see, by end of this week.'], ['H', `Noted. I will mark ${promised ? dateWord : 'the end of this week'} on my side.`], ['C', 'Okay.']];
+    st.push({
+      off, hm, status: 'connected', s: sg,
+      summary: o.slice(1),
+      ptpFromNow: promised ? (p.promise as number) : undefined,
+      ptpDays: !promised && sg === '+' ? 4 + (hashStr(p.name) % 3) : null,
+      reason, commit,
+    });
+  });
+  return st;
+}
+
+/* ---- Resolve stories into timed messages ---- */
+
+interface TimedLine { w: 'H' | 'C'; text: string; ts: number; att?: string[] }
+interface TimedWa { stage: WaStage; ts0: number; lines: TimedLine[]; sg: Sg; hist: boolean }
+interface TimedMail { stage: MailStage; ts0: number; msgs: Array<{ w: 'H' | 'C'; ts: number; subject: string; from: string; to: string; cc: string; att: string[]; body: string }>; sg: Sg; hist: boolean }
+interface TimedCall { stage: CallStage; ts: number; turns: TimedLine[]; dur: string | null; ptp: number | null }
+
+function stageAgo(s: { off?: number; ago?: number }, od: number): number {
+  return s.ago !== undefined ? s.ago : od - (s.off as number);
+}
+
+function resolveWa(stages: WaStage[], c: PCtx): TimedWa[] {
+  const out: TimedWa[] = [];
+  stages.forEach((s) => {
+    const ago = stageAgo(s, c.od);
+    if (ago < 0) return;
+    if (c.cleared && c.lastPayAgo !== null && !s.hist && ago < c.lastPayAgo) return;
+    let ts = AT(ago, s.hm);
+    const lines: TimedLine[] = [];
+    const bills = [...c.open.length ? c.open : [c.target]];
+    const amt = rs(amtAt(c, ago, c.cleared ? [c.target] : bills));
+    const days = String(Math.max(1, Math.floor((AT(ago, s.hm) - c.target.dueMs) / DAY)));
+    s.lines.forEach((ln, i) => {
+      if (i > 0) ts = humanize(ts + (ln[2] ?? 5) * MIN, hashStr(ln[1]) + i);
+      if (!ln[1]) return;
+      if (ts > CUTOFF) return;
+      lines.push({ w: ln[0], text: fill(ln[1], c, { amt, days }), ts, att: ln[3] });
+    });
+    if (!lines.some((l) => l.w === 'H')) return;
+    out.push({ stage: s, ts0: lines[0].ts, lines, sg: s.s ?? '~', hist: Boolean(s.hist) });
+  });
+  out.sort((a, b) => a.ts0 - b.ts0);
+  while (out.length > 8) out.shift();
+  while (out.length > 3 && out.reduce((n, t) => n + t.lines.length, 0) > 22) out.shift();
+  return out;
+}
+
+const attInvoice = (bill: string) => `Invoice_${bill.replace(/\//g, '_')}.pdf`;
+
+function mailTable(c: PCtx, bills: LedgerInv[], ago: number): { text: string; total: number } {
+  const rows = bills.filter((l) => l.dateMs <= NOW - ago * DAY && pendingAt(l, ago) > 0);
+  const use = rows.length ? rows : [bills[0]];
+  const head = 'Invoice No.            Date         Due date     Amount (Rs)   Pending (Rs)';
+  const body = use.map((l) => `${l.invNo.padEnd(22)} ${dmon(l.dateMs).padEnd(12)} ${dmon(l.dueMs).padEnd(12)} ${Math.round(l.inv.amt).toLocaleString('en-IN').padEnd(13)} ${Math.round(pendingAt(l, ago)).toLocaleString('en-IN')}`);
+  const total = use.reduce((s, l) => s + pendingAt(l, ago), 0);
+  return { text: [head, ...body, `Total pending: ${rs(total)}`].join('\n'), total };
+}
+
+function resolveMail(stages: MailStage[], c: PCtx): TimedMail[] {
+  const out: TimedMail[] = [];
+  const cust = `${c.p.owner} <${c.p.email}>`;
+  const mgrAddr = `${c.mgr[0]} <${c.mgr[1]}>`;
+  stages.forEach((s) => {
+    const ago = stageAgo(s, c.od);
+    if (ago < 0) return;
+    if (c.cleared && c.lastPayAgo !== null && !s.hist && ago < c.lastPayAgo) return;
+    const isPrev = Boolean(s.hist && c.prev);
+    const bills = isPrev ? [c.prev as LedgerInv] : (c.open.length ? c.open : [c.target]);
+    const billsForTable = c.cleared && !isPrev ? [c.target] : bills;
+    const ref = billsForTable[0];
+    const t0 = AT(ago, s.hm);
+    const days = String(Math.max(1, Math.floor((t0 - ref.dueMs) / DAY)));
+    const subjAmt = Math.round(pendingAt(ref, ago)).toLocaleString('en-IN');
+    const pendingNow = rs(amtAt(c, ago, billsForTable));
+    const extra: Record<string, string> = { amt: pendingNow, days, mgrFirst: c.mgr[0].split(' ')[0] };
+    if (isPrev) { extra.bill = ref.invNo; extra.amt1 = rs(ref.inv.amt); extra.due = dmon(ref.dueMs); extra.invdate = dmon(ref.dateMs); }
+    const dueFuture = ref.dueMs > t0;
+    const stmt = `Statement_of_Account_${MONTHS[new Date(t0).getMonth()]}${new Date(t0).getFullYear()}.pdf`;
+    const inv = attInvoice(ref.invNo);
+    let subject = s.subject ?? '';
+    let intro = '';
+    let atts = s.att;
+    switch (s.kind) {
+      case 'invoice':
+        subject ||= `Invoice ${ref.invNo} - Rs ${Math.round(ref.inv.amt).toLocaleString('en-IN')}, due ${dmon(ref.dueMs)}`;
+        intro = `Please find attached invoice ${ref.invNo} dated ${dmon(ref.dateMs)} for ${rs(ref.inv.amt)}, dispatched from our Bengaluru warehouse to your ${c.p.city} godown. Payment terms are ${c.p.terms} days from the invoice date, so the due date is ${dmon(ref.dueMs)}.`;
+        atts ??= [inv];
+        break;
+      case 'statement':
+        subject ||= `Statement of account as on ${dmon(t0)} - ${c.p.name}`;
+        intro = `Please find attached your statement of account as on ${dmon(t0)}. It lists the invoices that are open on our books. Kindly review it against your records and let us know if anything does not match.`;
+        atts ??= [stmt];
+        break;
+      case 'reminder':
+        subject ||= `Payment reminder: invoice ${ref.invNo} - Rs ${subjAmt}`;
+        intro = `This is a gentle reminder that the invoice below ${dueFuture ? 'falls due on' : 'was due on'} ${dmon(ref.dueMs)}. If the payment has already been released, kindly share the UTR so that we can match it.`;
+        atts ??= [inv, stmt];
+        break;
+      case 'overdue':
+        subject ||= `Overdue invoice ${ref.invNo} - Rs ${subjAmt}`;
+        intro = `The invoice below is ${days} days past its due date. We would appreciate it if the payment could be released this week. If there is any issue with the goods or the documents, please let us know so that we can resolve it quickly.`;
+        atts ??= [inv, stmt];
+        break;
+      default:
+        subject ||= `Final reminder: overdue invoice ${ref.invNo} - Rs ${subjAmt}`;
+        intro = `Despite our earlier reminders the amount below remains unpaid, now ${days} days past the due date. Further dispatches to your account will be on hold until it is regularised. Please call me on +91 88844 84000, or reply to this email with the payment date today.`;
+        atts ??= [inv, stmt];
+    }
+    const table = mailTable(c, billsForTable, ago);
+    const wantsCc = s.cc ?? (s.kind === 'overdue' || s.kind === 'final');
+    const msgs: TimedMail['msgs'] = [];
+    const firstBody = s.first ? fill(s.first, c, extra)
+      : `Dear ${c.vars.first},\n\n${intro}\n\n${table.text}\n\n${BANK}\n\n${H_SIG}`;
+    msgs.push({ w: 'H', ts: t0, subject, from: H_FROM, to: cust, cc: wantsCc ? mgrAddr : '', att: atts ?? [], body: firstBody });
+    let ts = t0;
+    let lastC = '';
+    s.thread.forEach((m) => {
+      ts = humanize(ts + (m.hrs ?? 4) * 3_600_000, hashStr(subject) + msgs.length);
+      if (ts > CUTOFF) return;
+      const body = fill(m.body, c, extra);
+      if (m.w === 'C') {
+        lastC = body;
+        msgs.push({ w: 'C', ts, subject: `Re: ${subject}`, from: cust, to: 'Neha Rao <accounts@happilo.com>', cc: '', att: m.att ?? [],
+          body: `Dear Neha,\n\n${body}\n\nRegards,\n${c.p.owner}\n${c.p.name}, ${c.p.city}\n${c.p.phone}` });
+      } else if (m.fwd) {
+        msgs.push({ w: 'H', ts, subject: `Fwd: Re: ${subject}`, from: H_FROM, to: mgrAddr, cc: c.p.founder ? 'Aarav Khanna <founder@happilo.com>' : '', att: m.att ?? [],
+          body: `${c.mgr[0].split(' ')[0]},\n\n${body}\n\nRegards,\nNeha\n\n---------- Forwarded message ----------\nFrom: ${cust}\nSubject: Re: ${subject}\n\n${lastC}` });
+      } else {
+        msgs.push({ w: 'H', ts, subject: `Re: ${subject}`, from: H_FROM, to: cust, cc: m.cc ? mgrAddr : '', att: m.att ?? [],
+          body: `Dear ${c.vars.first},\n\n${body}\n\n${H_SIG}` });
+      }
+    });
+    out.push({ stage: s, ts0: t0, msgs, sg: s.s ?? '~', hist: Boolean(s.hist) });
+  });
+  out.sort((a, b) => a.ts0 - b.ts0);
+  while (out.length > 8) out.shift();
+  return out;
+}
+
+function mmss(sec: number) { return `${p2(Math.floor(sec / 60))}:${p2(sec % 60)}`; }
+
+function resolveCall(stages: CallStage[], c: PCtx, scripted = false): TimedCall[] {
+  const out: TimedCall[] = [];
+  const eng = ['Modern Trade', 'Corporate Gifting', 'HoReCa', 'E-commerce Reseller'].includes(c.p.kind);
+  stages.forEach((s, idx) => {
+    const ago = stageAgo(s, c.od);
+    if (ago < 0) return;
+    if (c.cleared && c.lastPayAgo !== null && ago < c.lastPayAgo) return;
+    const ts = AT(ago, s.hm);
+    if (ts > CUTOFF) return;
+    const days = String(Math.max(1, Math.floor((ts - c.target.dueMs) / DAY)));
+    const amt = rs(amtAt(c, ago, c.cleared ? [c.target] : (c.open.length ? c.open : [c.target])));
+    const extra = { amt, days };
+    const turns: TimedLine[] = [];
+    let ptp: number | null = null;
+    if (s.status === 'connected') {
+      const v = eng ? (hashStr(c.p.name + idx) % 2 === 0 ? 0 : 2) : hashStr(c.p.name + idx) % 3;
+      const pick = (a: [string, string, string]) => a[v];
+      const opener: Line[] = scripted
+        ? [['H', 'Hello, am I speaking with {owner} ji from {party}? This is Neha calling from Happilo International, Bengaluru, accounts team.']]
+        : [
+        ['H', 'Namaste, am I speaking with {owner} ji from {party}?'],
+        ['C', pick(['Yes, speaking. Who is this?', 'Haan ji, boliye.', 'Yes, this is {first}. Tell me.'])],
+        ['H', 'Namaste {first} ji, this is Neha from Happilo International, Bengaluru, accounts team. Is this a good time for two minutes?'],
+        ['C', pick(['Yes, go ahead.', 'Haan bolo, kya baat hai?', 'Quickly please, I am a little busy.'])],
+        ['H', Number(days) > 0 && ts > c.target.dueMs ? 'Thank you. I am calling regarding invoice {bill} dated {invdate}. The pending amount on our books is {amt}, due on {due}, which is now {days} days overdue.' : 'Thank you. I am calling regarding invoice {bill} dated {invdate}. The pending amount on our books is {amt}, due on {due}.'],
+        ['C', pick(['Hmm, one second, let me recall which one that is.', 'Kaun sa invoice? Ek minute, yaad karta hu.', 'Okay, which consignment is this?'])],
+        ['H', 'It is the dispatch to your {city} godown, {items}.'],
+        ['C', pick(['Yes yes, the {item1} one. I remember.', 'Haan, wo {item1} wala. Yaad hai.', 'Okay, that one. Yes.'])],
+        ['H', 'Our records show {amt} outstanding against it. Does that match what you have?'],
+        ['C', pick(['Let me check with my accountant, but roughly yes.', 'Haan, lagbhag wahi hoga.', 'Yes, that looks right.'])],
+      ];
+      const recap: Line[] = scripted
+        ? [
+          ['H', 'Just to recap for my notes, {first} ji: the open amount on our books is {amt}, against invoice {bill} dated {invdate}, due on {due}.'],
+          ['C', pick(['Yes, that is what we have also.', 'Haan, wahi hai.', 'Yes, noted.'])],
+          ['H', s.ptpFromNow !== undefined || s.ptpDays ? 'And I am noting the date you have given me against this invoice.' : 'I will put down what we discussed and share it with our sales manager as well.'],
+          ['C', pick(['Sure.', 'Haan ji.', 'Okay.'])],
+        ]
+        : [];
+      const lines: Line[] = [
+        ...opener,
+        ...(s.reason ?? []),
+        ...(s.commit ?? []),
+        ...recap,
+        ['H', 'Thank you {first} ji. I will send the statement and the bank details on WhatsApp right after this call.'],
+        ['C', pick(['Okay, send it.', 'Haan bhej do.', 'Fine.'])],
+        ['H', 'Please share the UTR once the payment is released so that we can mark it on our side. Is there anything else I can help with?'],
+        ['C', pick(['No, that is all.', 'Nahi, bas.', 'No, thanks.'])],
+        ['H', 'Thank you for your time. Have a good day.'],
+        ['C', pick(['Thanks, bye.', 'Theek hai, rakhta hu.', 'Bye.'])],
+      ];
+      const merged: Line[] = [];
+      lines.forEach((ln, k) => {
+        if (!scripted && k === 10 && ln[0] === 'C') merged.push(['H', 'Thank you. May I ask what is holding the payment up at your end?']);
+        const last = merged[merged.length - 1];
+        if (last && last[0] === ln[0]) merged[merged.length - 1] = [last[0], `${last[1]} ${ln[1]}`];
+        else merged.push(ln);
+      });
+      let t = ts;
+      merged.forEach((ln) => { t += 6000 + (ln[1].length * 55); turns.push({ w: ln[0], text: fill(ln[1], c, extra), ts: t }); });
+      if (s.ptpFromNow !== undefined) ptp = NOW + s.ptpFromNow * DAY;
+      else if (s.ptpDays) ptp = ts + s.ptpDays * DAY;
+    }
+    const dur = s.status === 'connected' ? mmss(Math.round((turns[turns.length - 1].ts - ts) / 1000)) : null;
+    out.push({ stage: s, ts, turns, dur, ptp });
+  });
+  out.sort((a, b) => a.ts - b.ts);
+  while (out.length > 8) out.shift();
+  return out;
+}
+
+function waStatus(tl: TimedWa, i: number, hasLater: boolean, ts: number): 'sent' | 'delivered' | 'read' {
+  void tl; void i;
+  return hasLater || ts < NOW - DAY ? 'read' : 'delivered';
 }
 
 function buildOutreach(): RecoveryOutreachRow[] {
@@ -589,31 +1087,37 @@ function buildOutreach(): RecoveryOutreachRow[] {
     const totalOwed = open.reduce((s, l) => s + l.balance, 0);
     const overdueOpen = open.filter((l) => l.dueMs < NOW);
     const overdueAmt = overdueOpen.reduce((s, l) => s + l.balance, 0);
-    // For cleared accounts the cycle ran against the invoice paid last.
     const signed = Math.floor((NOW - target.dueMs) / DAY);
-    const overdueDays = cleared ? Math.max(0, signed) : Math.max(0, signed);
+    const overdueDays = Math.max(0, signed);
     const dueStr = ddmmyyyy(target.dueMs);
-    const amtStr = inr(cleared ? target.inv.amt : overdueAmt || target.balance);
+    void dueStr;
 
-    let touches = plan(p, signed);
-    if (cleared) {
-      // Cycle ended when the payment came in; drop touches after the last receipt.
-      const lastPayAgo = Math.min(...(target.inv.pay ?? [[0, 0]]).map((r) => r[0]));
-      touches = touches.filter((t) => t.at < NOW - lastPayAgo * DAY);
-    }
-    touches.sort((a, b) => a.at - b.at);
+    const c = buildCtx(p, lis, target, cleared, signed);
+    const story = SPECIAL[p.name];
+    const waT = resolveWa(story?.wa ?? genWa(c), c);
+    const emT = resolveMail(story?.em ?? genEm(c), c);
+    const clT = resolveCall(story?.call ?? genCall(c), c, Boolean(story?.call));
 
-    const lastReplied = [...touches].reverse().find((t) => t.reply);
-    const sent = lastReplied ? sign(lastReplied.reply) : 'neutral';
-    const sentiment = cleared ? 'positive' : sent;
+    // Overall sentiment = the party's most recent reply on any channel
+    const sig: Array<[number, Sg]> = [];
+    waT.forEach((t) => { const r = t.lines.filter((l) => l.w === 'C').pop(); if (r) sig.push([r.ts, t.sg]); });
+    emT.forEach((t) => { const r = t.msgs.filter((l) => l.w === 'C').pop(); if (r) sig.push([r.ts, t.sg]); });
+    clT.forEach((t) => { if (t.stage.status === 'connected') sig.push([t.ts, t.stage.s ?? '~']); });
+    sig.sort((a, b) => a[0] - b[0]);
+    const sentiment: 'positive' | 'neutral' | 'negative' = cleared ? 'positive' : SENT_WORD[sig.length ? sig[sig.length - 1][1] : '~'];
 
     const stage = cleared
       ? 'Closed'
       : p.stage ?? (p.founder ? 'Founder Review' : overdueDays > 45 ? 'Escalation' : overdueDays > 25 ? 'Reminder 3' : overdueDays > 12 ? 'Reminder 2' : overdueDays > 0 ? 'Reminder 1' : 'Invoice Issued');
     const disputed = Boolean(p.dispute);
-    const cycleStart = touches.length ? touches[0].at : target.dueMs;
-    const lastTouch = touches.length ? touches[touches.length - 1] : null;
-    const lastActivity = lastTouch ? Math.max(lastTouch.at, lastTouch.reply ? lastTouch.replyAt : 0) : target.dateMs;
+
+    const allTs: number[] = [];
+    const cycleTs: number[] = [];
+    waT.forEach((t) => { t.lines.forEach((l) => allTs.push(l.ts)); if (!t.hist) cycleTs.push(t.ts0); });
+    emT.forEach((t) => { t.msgs.forEach((l) => allTs.push(l.ts)); if (!t.hist) cycleTs.push(t.ts0); });
+    clT.forEach((t) => { allTs.push(t.ts); cycleTs.push(t.ts); });
+    const cycleStart = cycleTs.length ? Math.min(...cycleTs) : target.dueMs;
+    const lastActivity = allTs.length ? Math.max(...allTs) : target.dateMs;
     const payDate = cleared ? dmyDash(NOW - Math.min(...(target.inv.pay ?? [[0, 0]]).map((r) => r[0])) * DAY) : null;
 
     const row: Record<string, unknown> = {
@@ -649,32 +1153,39 @@ function buildOutreach(): RecoveryOutreachRow[] {
       credit: String(Math.round(target.paid + target.tds + target.cn)),
     };
 
-    const first = p.owner.split(' ')[0].replace(/\.$/, '');
+    const noteFor = (s: Sg, ch: 'wa' | 'email') =>
+      ch === 'wa' ? (s === '-' ? 'Customer pushing back' : s === '+' ? 'Positive, payment likely' : 'Needs time or documents')
+        : (s === '-' ? 'Customer disputing or refusing' : s === '+' ? 'Payment commitment received' : 'Asked for documents');
+
     // WhatsApp
-    const waT = touches.filter((t) => t.ch === 'wa');
     const waConv: ConversationEntry[] = [];
+    const flatWa = waT.flatMap((t, ti) => t.lines.map((l, li) => ({ t, ti, l, li })));
     for (let n = 1; n <= 8; n++) {
       const t = waT[n - 1];
       if (!t) {
         for (const f of ['date', 'content', 'status', 'sent_at', 'sentiment', 'note', 'reply']) row[`wa_${n}_${f}`] = null;
         continue;
       }
-      const off = Math.max(1, Math.round((t.at - target.dueMs) / DAY));
-      const content = waText(first, t.idx, target.invNo, amtStr, off, dueStr);
-      row[`wa_${n}_date`] = ddmmyyyy(t.at);
-      row[`wa_${n}_content`] = content;
-      row[`wa_${n}_status`] = t.reply ? 'replied' : t.at < NOW - 2 * DAY ? 'read' : 'delivered';
-      row[`wa_${n}_sent_at`] = ddmmyyyyHm(t.at);
-      row[`wa_${n}_sentiment`] = t.reply ? sign(t.reply) : null;
-      row[`wa_${n}_note`] = t.reply ? (sign(t.reply) === 'negative' ? 'Customer pushing back' : sign(t.reply) === 'positive' ? 'Positive, payment likely' : 'Needs time or documents') : null;
-      row[`wa_${n}_reply`] = t.reply ? text(t.reply) : null;
-      waConv.push({ role: 'business', stage: `WA ${n}`, channel: 'whatsapp', message: content, timestamp: ddmmyyyyHm(t.at) });
-      if (t.reply) waConv.push({ role: 'customer', stage: `WA ${n}`, channel: 'whatsapp', message: text(t.reply), timestamp: ddmmyyyyHm(t.replyAt) });
+      const firstH = t.lines.find((l) => l.w === 'H') as TimedLine;
+      const firstC = t.lines.find((l) => l.w === 'C' && l.ts >= firstH.ts) ?? t.lines.find((l) => l.w === 'C');
+      row[`wa_${n}_date`] = ddmmyyyy(firstH.ts);
+      row[`wa_${n}_content`] = firstH.text;
+      row[`wa_${n}_status`] = firstC ? 'replied' : firstH.ts < NOW - 2 * DAY ? 'read' : 'delivered';
+      row[`wa_${n}_sent_at`] = ddmmyyyyHm(firstH.ts);
+      row[`wa_${n}_sentiment`] = firstC ? SENT_WORD[t.sg] : null;
+      row[`wa_${n}_note`] = firstC ? noteFor(t.sg, 'wa') : null;
+      row[`wa_${n}_reply`] = firstC ? firstC.text : null;
     }
+    flatWa.forEach(({ t, ti, l }) => {
+      const later = flatWa.some((o) => o.l.w === 'C' && o.l.ts > l.ts);
+      const entry: ConversationEntry = { role: l.w === 'H' ? 'business' : 'customer', stage: `WA ${ti + 1}`, channel: 'whatsapp', message: l.text, timestamp: ddmmyyyyHm(l.ts) };
+      if (l.w === 'H') entry.delivery = waStatus(t, ti, later, l.ts);
+      if (l.att && l.att.length) entry.attachments = l.att;
+      waConv.push(entry);
+    });
     row.wa_conversation = waConv;
 
     // Email
-    const emT = touches.filter((t) => t.ch === 'email');
     const emConv: ConversationEntry[] = [];
     for (let n = 1; n <= 8; n++) {
       const t = emT[n - 1];
@@ -682,35 +1193,49 @@ function buildOutreach(): RecoveryOutreachRow[] {
         for (const f of ['date', 'content', 'status', 'sent_at', 'sentiment', 'note', 'reply']) row[`email_${n}_${f}`] = null;
         continue;
       }
-      const off = Math.max(1, Math.round((t.at - target.dueMs) / DAY));
-      const body = emailText(p.owner, t.idx, target.invNo, amtStr, off, dueStr);
-      row[`email_${n}_date`] = ddmmyyyy(t.at);
-      row[`email_${n}_content`] = body;
-      row[`email_${n}_status`] = t.reply ? 'replied' : 'delivered';
-      row[`email_${n}_sent_at`] = ddmmyyyyHm(t.at);
-      row[`email_${n}_sentiment`] = t.reply ? sign(t.reply) : null;
-      row[`email_${n}_note`] = t.reply ? (sign(t.reply) === 'negative' ? 'Customer disputing or refusing' : sign(t.reply) === 'positive' ? 'Payment commitment received' : 'Asked for documents') : null;
-      row[`email_${n}_reply`] = t.reply ? text(t.reply) : null;
-      emConv.push({ role: 'business', stage: `Email ${n}`, channel: 'email', message: body, timestamp: ddmmyyyyHm(t.at) });
-      if (t.reply) emConv.push({ role: 'customer', stage: `Email ${n}`, channel: 'email', message: text(t.reply), timestamp: ddmmyyyyHm(t.replyAt) });
+      const first = t.msgs[0];
+      const reply = t.msgs.find((m) => m.w === 'C');
+      row[`email_${n}_date`] = ddmmyyyy(first.ts);
+      row[`email_${n}_content`] = `Subject: ${first.subject}\n\n${first.body}`;
+      row[`email_${n}_status`] = reply ? 'replied' : 'delivered';
+      row[`email_${n}_sent_at`] = ddmmyyyyHm(first.ts);
+      row[`email_${n}_sentiment`] = reply ? SENT_WORD[t.sg] : null;
+      row[`email_${n}_note`] = reply ? noteFor(t.sg, 'email') : null;
+      row[`email_${n}_reply`] = reply ? reply.body.replace(/^Dear Neha,\n\n/, '').split('\n\nRegards,')[0] : null;
+      t.msgs.forEach((m) => {
+        emConv.push({
+          role: m.w === 'H' ? 'business' : 'customer', stage: `Email ${n}`, channel: 'email', message: m.body, timestamp: ddmmyyyyHm(m.ts),
+          subject: m.subject, from: m.from, to: m.to, ...(m.cc ? { cc: m.cc } : {}), ...(m.att.length ? { attachments: m.att } : {}),
+        });
+      });
     }
     row.email_conversation = emConv;
 
     // Calls
-    const clT = touches.filter((t) => t.ch === 'call');
     for (let n = 1; n <= 8; n++) {
       const t = clT[n - 1];
       if (!t) {
-        for (const f of ['date', 'content', 'status', 'sent_at', 'sentiment', 'note', 'recording_url']) row[`call_${n}_${f}`] = null;
+        for (const f of ['date', 'content', 'status', 'sent_at', 'sentiment', 'note', 'recording_url', 'duration', 'promise_date']) row[`call_${n}_${f}`] = null;
         continue;
       }
-      row[`call_${n}_date`] = ddmmyyyy(t.at);
-      row[`call_${n}_content`] = callContent(first, target.invNo, amtStr, t.reply);
-      row[`call_${n}_status`] = t.reply ? 'connected' : 'no-answer';
-      row[`call_${n}_sent_at`] = ddmmyyyyHm(t.at);
-      row[`call_${n}_sentiment`] = t.reply ? sign(t.reply) : null;
-      row[`call_${n}_note`] = t.reply ? (sign(t.reply) === 'positive' ? 'Promise to pay noted' : sign(t.reply) === 'negative' ? 'Customer unwilling, escalate' : 'Asked to call back') : 'No answer';
+      const s = t.stage;
+      row[`call_${n}_date`] = ddmmyyyy(t.ts);
+      row[`call_${n}_status`] = s.status;
+      row[`call_${n}_sent_at`] = ddmmyyyyHm(t.ts);
       row[`call_${n}_recording_url`] = null;
+      row[`call_${n}_duration`] = t.dur;
+      row[`call_${n}_promise_date`] = t.ptp ? ddmmyyyy(t.ptp) : null;
+      row[`call_${n}_note`] = s.summary;
+      if (s.status === 'connected') {
+        row[`call_${n}_content`] = t.turns.map((x) => `${x.w === 'H' ? 'Neha (Happilo Accounts)' : p.owner}: ${x.text}`).join('\n');
+        row[`call_${n}_sentiment`] = SENT_WORD[s.s ?? '~'];
+      } else if (s.status === 'voicemail') {
+        row[`call_${n}_content`] = `Neha (Happilo Accounts) [voicemail]: Namaste ${c.vars.first} ji, this is Neha from Happilo International, Bengaluru. I am calling about invoice ${target.invNo}. Please call me back on +91 88844 84000 when you are free. Thank you.`;
+        row[`call_${n}_sentiment`] = null;
+      } else {
+        row[`call_${n}_content`] = 'Rang eight times, no answer. Will try again next working day.';
+        row[`call_${n}_sentiment`] = null;
+      }
     }
 
     out.push(row as unknown as RecoveryOutreachRow);

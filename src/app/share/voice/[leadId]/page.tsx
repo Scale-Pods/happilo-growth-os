@@ -25,8 +25,11 @@ function phoneKey(value: string | null | undefined): string | null {
  */
 async function fetchLatestCallForLead(leadId: string, lead: Lead | null): Promise<VapiCallLog | null> {
   const calls = [...getB2BDataset().vapiCalls].sort((a, b) => ((a.started_at ?? '') < (b.started_at ?? '') ? 1 : -1));
-  const byId = calls.find((c) => c.master_leads_id === leadId);
-  if (byId) return byId;
+  // Prefer the latest call where the lead picked up, so the page has a conversation to show.
+  const mine = calls.filter((c) => c.master_leads_id === leadId);
+  const answered = mine.find((c) => (c.status ?? '') === 'ended' && Boolean(c.transcript));
+  if (answered) return answered;
+  if (mine[0]) return mine[0];
   const keys = [phoneKey(lead?.phone), phoneKey(lead?.whatsapp_number)].filter((k): k is string => k !== null);
   if (keys.length === 0) return null;
   return (

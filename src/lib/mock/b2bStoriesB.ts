@@ -1,0 +1,496 @@
+/**
+ * Full outreach stories for leads at meeting, sample and interested stages,
+ * plus one lost deal so the history reads end to end.
+ */
+import { type Story, RATE_CARD, GIFT_CAT, FSSAI_PDF, sig } from './b2bStoryTypes';
+
+const KARTHIK = sig('Karthik Iyer', 'B2B Sales');
+const DIVYA = sig('Divya Nair', 'B2B Sales');
+const ROHAN = sig('Rohan Verma', 'B2B Sales');
+
+export const STORIES_B: Story[] = [
+  /* ------------------------------ Bharat Hampers & Co. (meeting booked) ------------------------------ */
+  {
+    co: 'Bharat Hampers & Co.',
+    sent: ['positive', 'wants_demo', 'Meeting fixed at his T. Nagar shop on Tuesday. Needs a price for 2,000 small boxes for wedding season.'],
+    wa: [
+      [27, '10:50', 'o', 'Vanakkam Harish sir, Karthik from Happilo B2B. We supply ready gift boxes and loose bulk packs to hamper makers. Can I share our wedding and festive range?'],
+      [27, '15:20', 'i', 'Vanakkam. Yes, we do a lot of wedding return gifts and Diwali hampers. Send details.'],
+      [27, '15:40', 'o', 'Sharing the catalogue sir. Small boxes from Rs 199 to Rs 449 are popular for weddings, bigger hampers above Rs 799.', '[Catalogue PDF] Corporate_Gifting_Catalogue_2026.pdf'],
+      [24, '12:10', 'i', 'We need small boxes with dates and 2 nuts, around Rs 250 budget. Weddings start from December, around 2,000 boxes in all.'],
+      [24, '12:40', 'o', 'Noted. A mini box with 50g almonds, 50g cashews and 4 Medjoul dates can be done at about Rs 228 for 2,000 boxes with printed sleeve. I will send a proper quote.'],
+      [20, '17:00', 'i', 'Rs 228 is good. Can bride-groom names be printed on the sleeve? Different names per order.'],
+      [20, '17:25', 'o', 'Variable printing is possible in lots of 100 boxes, adds Rs 6 a box. Minimum lot is 100.'],
+      [17, '11:30', 'o', 'Sir sharing the mini box mockup with sample sleeve. Let me know if you want a different layout.', '[Box mockup] Mini_Wedding_Box_Mockup.pdf'],
+      [16, '13:15', 'i', 'Looks nice. Better to see in person. Can your team come to my shop and show the real box?'],
+      [16, '13:40', 'o', 'Definitely sir. Our colleague will carry the sample boxes. Which day suits you?'],
+      [15, '10:20', 'i', 'Tuesday 11 am at T. Nagar shop. 14, North Usman Road.'],
+      [15, '10:45', 'o', 'Tuesday 11 am noted. I will confirm again a day before.'],
+      [4, '16:40', 'i', 'Please send 2,000 box price on mail before Tuesday. Also what is the payment terms for wedding season?'],
+      [4, '17:05', 'o', 'Will send tomorrow sir. Payment is 40% advance with order and the rest before dispatch for first orders.'],
+      [0, '09:30', 'o', 'Good morning Harish sir, quote for 2,000 mini wedding boxes is on your email. Looking forward to Tuesday 11 am.'],
+    ],
+    em: [
+      { d: 25, t: '10:30', dir: 'o', subject: 'Happilo wedding and festive boxes for Bharat Hampers', atts: [GIFT_CAT, RATE_CARD],
+        body: `Dear Harish sir,\n\nThank you for your interest. Attaching our gifting catalogue and the bulk rate card. Mini boxes popular for weddings:\n\n  Mini Date Box      Rs 199   6 Medjoul dates, 30g almonds\n  Mini Nut Box       Rs 249   50g almonds, 50g cashews, 4 dates\n  Wedding Select     Rs 449   almonds, cashews, pistachios, dates\n\nPrinted sleeves and name printing available.\n\n${KARTHIK}` },
+      { d: 2, t: '10:30', dir: 'o', subject: 'Quote HI-Q-2611-33: 2,000 mini wedding boxes for Bharat Hampers', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-33_BharatHampers.pdf'],
+        body: `Dear Harish sir,\n\nAs discussed, quote for the wedding season:\n\n  Item                                  Qty      Rate     Amount (Rs)\n  Mini Nut Box (50g/50g/4 dates)        2,000    228      4,56,000\n  Printed sleeve with couple names      2,000      6         12,000\n  Delivery to T. Nagar warehouse                              9,000\n  Total before GST                                          4,77,000\n  GST 5%                                                     23,850\n  Total                                                     5,00,850\n\nTerms: 40% advance, rest before dispatch. Delivery in lots of 500 as needed. Valid for 10 days.\n\n${KARTHIK}` },
+    ],
+    calls: [
+      { d: 22, t: '16:30', outcome: 'completed', secs: 226, summary: 'Hamper company with a showroom in T. Nagar. About 2,000 mini boxes for weddings from December. Wants to see the box in person.', next: 'Book a shop visit with sample boxes.',
+        gen: { topic: 'mini boxes for the wedding season', objection: 'he wants to see the real box and sleeve quality before deciding on 2,000 pieces', answer: 'we will carry the sample boxes to your shop and he can check the sleeve print and the packing right there', nextStep: 'Karthik confirms a Tuesday 11 am visit at the T. Nagar shop', rep: 'Karthik', tone: 'warm' } },
+    ],
+    events: [
+      { d: 15, t: '10:45', kind: 'stage', text: 'Meeting booked: Tuesday 11 am at his T. Nagar shop' },
+      { d: 2, t: '10:30', kind: 'quote', text: 'Quote HI-Q-2611-33 for 2,000 mini boxes sent, Rs 5,00,850 with GST' },
+    ],
+    upcoming: [
+      { inDays: 3, t: '09:30', ch: 'whatsapp', label: 'Reminder for Tuesday 11 am shop visit (T. Nagar)' },
+      { inDays: 5, t: '12:00', ch: 'call', label: 'Call after the visit for the order decision' },
+    ],
+  },
+
+  /* ------------------------------ Daily Needs Hypermart (meeting booked) ------------------------------ */
+  {
+    co: 'Daily Needs Hypermart',
+    sent: ['positive', 'wants_demo', 'Meeting with their category buyer on Thursday at the Madhapur head office.'],
+    wa: [
+      [25, '10:30', 'o', 'Namaste Suresh garu, Rohan from Happilo B2B. We supply Happilo nuts, dates, makhana and trail mixes to hypermarkets with proper trade terms. Can I send the retail range and margins?'],
+      [25, '13:50', 'i', 'Hello Rohan. We run 3 hypermarts in Hyderabad. Our category head handles new brands. Send details first.'],
+      [25, '14:10', 'o', 'Sharing now sir. Retailer margin is 24 to 28% depending on SKU. For hypermarts we also supply shelf-shippers.', '[Rate card] Happilo_B2B_RateCard_Nov2026.pdf'],
+      [21, '11:20', 'i', 'Our buyer Mr. Kiran is interested to review. He asked about shelf life, FSSAI and barcode. Please send documents.'],
+      [21, '11:50', 'o', 'Sending FSSAI licence, barcode list and shelf life sheet on mail now.', '[FSSAI certificate] Happilo_FSSAI_Certificate.pdf'],
+      [18, '16:10', 'i', 'Docs received. Kiran wants to see the full range and a few samples. Can you come to head office?'],
+      [18, '16:35', 'o', 'Yes sir. We can come with samples of makhana, nuts, dates and trail mix. Please suggest a date.'],
+      [11, '12:30', 'i', 'Kiran is free next Thursday 3 pm at Madhapur head office. 4th floor.'],
+      [11, '12:50', 'o', 'Thursday 3 pm confirmed sir. I will come with a colleague and a sample bag. We will also bring the 2026 planogram idea for your stores.'],
+      [3, '17:20', 'i', 'Kiran asked if you can give a first listing scheme for 3 stores. Free fill or extra margin?'],
+      [3, '17:50', 'o', 'We can do extra 3% margin on the first two orders and one shelf-shipper per store free. I will explain in the meeting.'],
+    ],
+    em: [
+      { d: 21, t: '11:40', dir: 'o', subject: 'Happilo documents for category review: Daily Needs Hypermart', atts: [FSSAI_PDF, 'Happilo_Barcode_And_ShelfLife_List.pdf', RATE_CARD],
+        body: `Dear Suresh garu,\n\nAs requested, attaching:\n  1. FSSAI licence (11222999000365)\n  2. Barcode and shelf life list for all 50 SKUs\n  3. November rate card\n\nAll packs are sealed with 9 months shelf life from manufacturing. Please let me know if your buyer needs anything else.\n\n${ROHAN}` },
+      { d: 11, t: '13:00', dir: 'o', subject: 'Meeting confirmation: Thursday 3 pm, Madhapur head office', cc: 'kiran.reddy@dailyneedsindia.in',
+        body: `Dear Suresh garu, dear Kiran garu,\n\nThis is to confirm our meeting on Thursday at 3 pm at your Madhapur head office. We will bring samples across makhana, nuts, dates and trail mixes along with a draft listing proposal for the three stores.\n\n${ROHAN}` },
+      { d: 3, t: '18:10', dir: 'o', subject: 'Draft listing scheme for Daily Needs Hypermart', atts: ['Listing_Scheme_DailyNeeds_Draft.pdf'],
+        body: `Dear Suresh garu,\n\nAttaching a draft listing scheme for 3 stores: extra 3% margin on the first two orders, one shelf-shipper per store at our cost, and payment 21 days from delivery. We will walk through it with Kiran garu on Thursday.\n\n${ROHAN}` },
+    ],
+    calls: [
+      { d: 24, t: '15:30', outcome: 'completed', secs: 215, summary: 'Three hypermarts in Hyderabad. New brands go through the category head. He needs FSSAI, barcode and shelf life documents.', next: 'Email documents and book a buyer meeting.',
+        gen: { topic: 'getting Happilo in front of your category buyer', objection: 'new brands take time since the buyer reviews only twice a month', answer: 'we can send all the documents today so the buyer has them before the next review and we can present in person', nextStep: 'Rohan emails the FSSAI copy, barcode list and rate card today', rep: 'Rohan', tone: 'cool' } },
+    ],
+    events: [
+      { d: 11, t: '12:50', kind: 'stage', text: 'Meeting booked: Thursday 3 pm at Madhapur head office' },
+      { d: 3, t: '18:10', kind: 'quote', text: 'Draft listing scheme sent for three stores' },
+    ],
+    upcoming: [
+      { inDays: 5, t: '09:30', ch: 'whatsapp', label: 'Meeting reminder for Thursday 3 pm' },
+      { inDays: 7, t: '11:00', ch: 'email', label: 'Send meeting notes and next steps' },
+    ],
+  },
+
+  /* ------------------------------ Patel Super Bazaar (meeting booked) ------------------------------ */
+  {
+    co: 'Patel Super Bazaar',
+    sent: ['positive', 'wants_demo', 'Store visit fixed for Saturday 11 am. Will ask about credit terms.'],
+    wa: [
+      [23, '12:00', 'o', 'Namaste Jignesh bhai, Divya from Happilo B2B. Dipti ben of Mehta Kirana suggested we speak. We supply makhana, nuts and dates directly to supermarkets in Ahmedabad.'],
+      [23, '15:30', 'i', 'Namaste. Haan Dipti ne bataya tha. Humare 5 stores hain Satellite, Bopal, Thaltej me. Rates bhejiye.'],
+      [23, '15:50', 'o', 'Sharing rate card Jignesh bhai. Margin around 25% on makhana and trail mixes, 22% on nuts.', '[Rate card] Happilo_B2B_RateCard_Nov2026.pdf'],
+      [20, '11:00', 'i', 'Kitna minimum order? Aur credit kitne din ka milega?'],
+      [20, '11:25', 'o', 'Minimum is one mixed carton around Rs 15,000 per store. Credit for new retailers is 15 days after first order. We can discuss for 5 stores.'],
+      [16, '17:10', 'i', 'Pehle product dekhna hai. Sample ya store visit?'],
+      [16, '17:30', 'o', 'Our team can visit your Satellite store with samples and the display units. Which day is good?'],
+      [10, '12:00', 'i', 'Saturday 11 baje Satellite store pe aa jao. Mere partner bhi honge.'],
+      [10, '12:20', 'o', 'Saturday 11 am noted. Our regional rep Mahesh will come with a sample bag.'],
+      [2, '16:40', 'i', 'Saturday pakka hai na? Credit ke baare me bhi baat karenge.'],
+      [2, '17:00', 'o', 'Pakka Jignesh bhai. I will remind you tomorrow evening also.'],
+    ],
+    em: [
+      { d: 21, t: '10:20', dir: 'o', subject: 'Happilo range for Patel Super Bazaar, Ahmedabad', atts: [RATE_CARD],
+        body: `Dear Jignesh bhai,\n\nThank you for your interest. Attaching our trade rate card. Popular lines for supermarkets:\n\n  Item                                  Pack    MRP    Margin\n  Himalayan Salt & Pepper Makhana       55g     102    25%\n  Premium Whole Cashew Nuts             200g    336    24%\n  Super Soft Kimia Dates                500g    395    22%\n  Premium Nutritious Nutty Trail Mix    200g    289    28%\n\n${DIVYA}` },
+      { d: 10, t: '12:40', dir: 'o', subject: 'Store visit on Saturday 11 am: Patel Super Bazaar, Satellite', cc: 'mahesh.patil@happilo.com',
+        body: `Dear Jignesh bhai,\n\nThis is to confirm that our regional representative Mahesh Patil will visit your Satellite store on Saturday at 11 am with samples and a display unit. Please let us know if the time changes.\n\n${DIVYA}` },
+    ],
+    calls: [
+      { d: 19, t: '14:20', outcome: 'completed', secs: 198, summary: 'Supermarket chain with five stores. Interested but wants to see the product in store first. Asked about credit.', next: 'Arrange a store visit with samples.',
+        gen: { topic: 'supplying Happilo to your five stores', objection: 'he wants more than 15 days credit if all five stores order together', answer: 'we can consider credit based on a combined monthly volume after the first order is paid', nextStep: 'Divya arranges a store visit on Saturday at 11 am with samples', rep: 'Divya', tone: 'warm' } },
+    ],
+    events: [
+      { d: 10, t: '12:20', kind: 'stage', text: 'Store visit booked: Saturday 11 am, Satellite' },
+    ],
+    upcoming: [
+      { inDays: 0, t: '17:00', ch: 'whatsapp', label: 'Reminder for tomorrow 11 am store visit' },
+      { inDays: 2, t: '12:00', ch: 'call', label: 'Follow-up call after the store visit' },
+    ],
+  },
+
+  /* ------------------------------ Anand Gifting Studio (sample sent) ------------------------------ */
+  {
+    co: 'Anand Gifting Studio',
+    sent: ['positive', 'wants_pricing', 'Liked the sample. One client wants 150 boxes with branded sleeve, deciding by Friday.'],
+    wa: [
+      [31, '11:15', 'o', 'Hi Meenal ji, Rohan from Happilo B2B. Aarti Menon suggested we connect. We make gift boxes for corporates that gifting studios resell with their own branding. Shall I share options?'],
+      [31, '14:00', 'i', 'Hi Rohan. Yes, Aarti told me. We do festive boxes for IT companies in volumes of 100 to 400. Send the catalogue.'],
+      [31, '14:20', 'o', 'Sharing the catalogue and the white-label price list. You can brand the sleeve with your studio name or the client logo.', '[Catalogue PDF] Corporate_Gifting_Catalogue_2026.pdf'],
+      [28, '12:10', 'i', 'Prices are good. Can I get a sample kit with two boxes and a sleeve?'],
+      [28, '12:35', 'o', 'Yes. I will send the Select (Rs 999) and Premium (Rs 1,299) boxes with a blank sleeve. Please share the address.'],
+      [28, '12:50', 'i', 'Anand Gifting Studio, 2nd floor, 100 Feet Road, Indiranagar, Bengaluru 560038.'],
+      [27, '16:30', 'o', 'Sample kit dispatched by our own van today, delivery tomorrow before 1 pm.'],
+      [26, '14:45', 'i', 'Got the kit. Very neat. Will show to the client team this week.'],
+      [19, '11:00', 'o', 'Hi Meenal ji, did the clients get a chance to see the kit? Happy to explain customisation options.'],
+      [19, '18:20', 'i', 'One client, a fintech company, wants 150 boxes with their sleeve. Price for Rs 999 box with sleeve?'],
+      [19, '18:45', 'o', 'For 150 boxes: Rs 929 a box white-label with printed sleeve at Rs 42 extra. I will send a formal quote.'],
+      [12, '12:30', 'i', 'Client is asking for an almond-only option too. Maybe 50 of them.'],
+      [12, '12:50', 'o', 'Almond-only box (400g almonds in a gift pouch) is Rs 560 for 50 boxes. Adding to the quote.'],
+      [4, '15:30', 'i', 'They will decide by Friday. Please hold stock for 150 plus 50. Delivery before 15 Dec.'],
+      [4, '15:55', 'o', 'Noted Meenal ji. I will hold the slot till Friday evening.'],
+      [1, '12:15', 'o', 'Hi Meenal ji, just checking on the client decision for Friday. Revised quote was sent on Monday.'],
+    ],
+    em: [
+      { d: 29, t: '10:10', dir: 'o', subject: 'White-label gift boxes for Anand Gifting Studio', atts: [GIFT_CAT, RATE_CARD],
+        body: `Dear Meenal ji,\n\nThank you for speaking with us. Attached are the catalogue and the white-label price sheet.\n\n  Box          Contents                                      White-label price\n  Classic      almonds, cashews, raisins, dates              Rs 699\n  Select       almonds, cashews, pistachios, dates           Rs 849 (200+ boxes)\n  Premium      Select plus Medjoul dates, trail mix          Rs 1,099\n\nBlank or branded sleeve at Rs 42 a box for 100+ boxes. Delivery in Bengaluru is free.\n\n${ROHAN}` },
+      { d: 18, t: '16:00', dir: 'o', subject: 'Quote HI-Q-2611-12: 150 boxes with branded sleeve, Anand Gifting Studio', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-12_AnandGifting.pdf'],
+        body: `Dear Meenal ji,\n\nQuote for your fintech client:\n\n  Item                         Qty    Rate    Amount (Rs)\n  Select box (white-label)     150    929     1,39,350\n  Printed sleeve               150     42        6,300\n  Delivery, Bengaluru                            Free\n  Total before GST                              1,45,650\n  GST 5%                                           7,283\n  Total                                         1,52,933\n\nProduction 8 working days from artwork sign-off. Valid for 10 days.\n\n${ROHAN}` },
+      { d: 3, t: '11:30', dir: 'o', subject: 'Re: Quote HI-Q-2611-12: revised with almond-only option', atts: ['Quote_HI-Q-2611-12_rev1.pdf'],
+        body: `Dear Meenal ji,\n\nRevised quote attached with 50 almond-only boxes at Rs 560 each (Rs 28,000 before GST). We will hold stock for 150 plus 50 boxes till Friday evening.\n\n${ROHAN}` },
+      { d: 2, t: '09:40', dir: 'i', subject: 'Re: Quote HI-Q-2611-12: revised with almond-only option',
+        body: `Hi Rohan,\n\nThanks for the revised quote. The client has seen it and their procurement needs one more internal approval. I will confirm by Friday evening.\n\nMeenal Anand\nAnand Gifting Studio, Indiranagar` },
+    ],
+    calls: [
+      { d: 24, t: '15:45', outcome: 'completed', secs: 193, summary: 'Called after the sample kit arrived. Liked packing and weight. One fintech client is interested in 150 boxes.', next: 'Send formal quote for 150 boxes with branded sleeve.',
+        gen: { topic: 'how the sample kit looked to your team', objection: 'the client wants to see how the sleeve looks with their logo before approving', answer: 'we can prepare a digital mockup with their logo in a day, before any printing is started', nextStep: 'Rohan sends a quote and a mockup with the client logo', rep: 'Rohan', tone: 'warm' } },
+    ],
+    events: [
+      { d: 27, t: '16:30', kind: 'sample', text: 'Sample kit (Select, Premium and blank sleeve) delivered by our van' },
+      { d: 27, t: '16:40', kind: 'stage', text: 'Moved to Sample sent' },
+      { d: 18, t: '16:00', kind: 'quote', text: 'Quote HI-Q-2611-12 sent, 150 boxes, Rs 1,52,933 with GST' },
+      { d: 3, t: '11:30', kind: 'quote', text: 'Revised quote with 50 almond-only boxes' },
+    ],
+    upcoming: [{ inDays: 0, t: '16:30', ch: 'call', label: 'Call Meenal for the client decision (due today)' }],
+  },
+
+  /* ------------------------------ GiftNest Solutions (sample sent) ------------------------------ */
+  {
+    co: 'GiftNest Solutions',
+    sent: ['positive', 'wants_pricing', 'Client wants 400 boxes in Gurugram by 10 December. Waiting for the quote.'],
+    wa: [
+      [21, '10:45', 'o', 'Hi Pooja ji, Ritu from Happilo Key Accounts. Thanks for your enquiry on our website. How many gift boxes do you need and by when?'],
+      [21, '13:20', 'i', 'Hi Ritu. We are a gifting agency, MNC clients. One client needs 400 boxes in Gurugram for year end, by 10 Dec.'],
+      [21, '13:40', 'o', 'Sure. I am sending the gifting catalogue. Any budget range per box?', '[Catalogue PDF] Corporate_Gifting_Catalogue_2026.pdf'],
+      [20, '11:10', 'i', 'Around Rs 1,000 to 1,300. Needs to look premium, no plastic.'],
+      [20, '11:35', 'o', 'The Premium box at Rs 1,299 fits. Wooden-finish box with a paper sleeve, no plastic trays. I will send a sample box and the price list.'],
+      [19, '15:00', 'o', 'Sample Premium box dispatched by Blue Dart, AWB 5589 7710 2234, Cyber City address. Should reach in 2 days.'],
+      [16, '16:30', 'i', 'Sample received. The box looks great. Client wants to check the box weight against another vendor.'],
+      [16, '16:55', 'o', 'Net weight of the Premium box is 520g of nuts and dates. I will send a spec sheet.', '[Spec sheet] Premium_Box_Spec_Sheet.pdf'],
+      [12, '12:40', 'i', 'Client is happy. Please prepare quote for 400 boxes with their logo on the sleeve and delivery to Gurugram office.'],
+      [12, '13:05', 'o', 'Will send it by evening Pooja ji.'],
+      [11, '10:20', 'o', 'Quote sent on mail. 400 boxes at Rs 1,249 with sleeve and delivery included, before GST. Please check.'],
+      [6, '12:50', 'o', 'Pooja ji, wanted to check if you got a chance to share the quote with your client. Production slot for 10 Dec delivery needs to be locked by 25 Nov.'],
+      [5, '18:10', 'i', 'Client needs a revised quote with 100 boxes in a different SKU (Select box Rs 999). Can you do it?'],
+      [5, '18:40', 'o', 'Yes, 300 Premium plus 100 Select. Will revise and send tomorrow.'],
+    ],
+    em: [
+      { d: 20, t: '10:30', dir: 'o', subject: 'Premium gift boxes for GiftNest Solutions: catalogue and price list', atts: [GIFT_CAT, RATE_CARD],
+        body: `Dear Pooja ji,\n\nThank you for your enquiry. Attaching the 2026 gifting catalogue and the price list. For a client in Gurugram with a Rs 1,000 to 1,300 budget I would suggest:\n\n  Select Box   Rs   999   almonds, cashews, pistachios, dates\n  Premium Box  Rs 1,299   almonds, cashews, pistachios, Medjoul dates, trail mix\n\nBoth have printed paper sleeves and no plastic trays. A sample Premium box is on its way.\n\n${sig()}` },
+      { d: 11, t: '10:15', dir: 'o', subject: 'Quote HI-Q-2611-08: 400 gift boxes for GiftNest Solutions', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-08_GiftNest.pdf'],
+        body: `Dear Pooja ji,\n\n  Item                                Qty    Rate    Amount (Rs)\n  Premium box with printed sleeve     400    1,249   4,99,600\n  Delivery, Gurugram (one address)                    8,500\n  Total before GST                                   5,08,100\n  GST 5%                                                25,405\n  Total                                              5,33,505\n\nTerms: 50% advance, balance before dispatch. Delivery by 10 December if artwork is approved by 25 November.\n\n${sig()}` },
+      { d: 5, t: '19:00', dir: 'i', subject: 'Re: Quote HI-Q-2611-08: 400 gift boxes for GiftNest Solutions', cc: 'client.admin@gifting-partner.in',
+        body: `Hi Ritu,\n\nThe client's admin team has asked for a revised quote: 300 Premium boxes and 100 Select boxes (Rs 999). Same sleeve and delivery. Please send by tomorrow.\n\nPooja Bansal\nGiftNest Solutions, Gurugram` },
+    ],
+    calls: [
+      { d: 17, t: '14:10', outcome: 'completed', secs: 241, summary: 'Gifting agency with MNC clients. 400 boxes needed in Gurugram by 10 December. Wants premium finish and no plastic.', next: 'Send quote with logo sleeve and delivery.',
+        gen: { topic: 'the 400 boxes for your Gurugram client', objection: 'she wants to be sure the box has no plastic tray because of the client sustainability policy', answer: 'the box uses a paper board insert and sealed inner pouches, we can send a material note for the client', nextStep: 'Ritu sends the quote with sleeve printing and a material note', rep: 'Ritu', tone: 'warm' } },
+    ],
+    events: [
+      { d: 19, t: '15:00', kind: 'sample', text: 'Premium sample box sent by Blue Dart, AWB 5589 7710 2234' },
+      { d: 19, t: '15:10', kind: 'stage', text: 'Moved to Sample sent' },
+      { d: 11, t: '10:15', kind: 'quote', text: 'Quote HI-Q-2611-08 sent, 400 boxes, Rs 5,33,505 with GST' },
+      { d: 5, t: '18:40', kind: 'note', text: 'Client wants 300 Premium and 100 Select, revised quote due' },
+    ],
+    upcoming: [{ inDays: 0, t: '15:30', ch: 'email', label: 'Send revised quote (300 Premium, 100 Select)' }],
+  },
+
+  /* ------------------------------ Nutri Basket Mart (sample sent) ------------------------------ */
+  {
+    co: 'Nutri Basket Mart',
+    sent: ['positive', 'wants_pricing', 'Dates sample approved. Asking for better margin on Ajwa for 20 boxes.'],
+    wa: [
+      [26, '11:20', 'o', 'Hello Farhan sir, Divya from Happilo B2B. We supply Happilo dates, nuts and seeds to premium grocery stores. Would you like a sample of our dates and nuts?'],
+      [26, '14:00', 'i', 'Hi. Yes we have a health food aisle at Banjara Hills. Premium dates sell well. Send a sample.'],
+      [26, '14:25', 'o', 'Sure. Sending Ajwa 500g, Medjoul 200g, Kimia 500g and a cashew pack. Address please.'],
+      [25, '10:00', 'i', 'Nutri Basket Mart, Road No. 12, Banjara Hills, Hyderabad 500034.'],
+      [24, '15:30', 'o', 'Sample dispatched by DTDC, AWB 7112 4410 8802. Should reach Thursday.'],
+      [21, '17:10', 'i', 'Sample received. We tasted all. Medjoul and Ajwa are excellent. Prices for retail?'],
+      [21, '17:35', 'o', 'Sharing the rate card. Ajwa 500g shelf price Rs 795, retailer margin 22%. Medjoul 200g Rs 395.', '[Rate card] Happilo_B2B_RateCard_Nov2026.pdf'],
+      [17, '12:20', 'i', '22% is low on Ajwa. We sell lots of Ajwa. Can you do 27%?'],
+      [17, '12:50', 'o', 'For 20 boxes together I can do 25%, that is as high as we go on Ajwa. Let me confirm with my manager.'],
+      [13, '16:00', 'i', 'Ok 25% for 20 boxes. Include Medjoul and Kimia in the same order, 10 boxes each. Can I get same 25%?'],
+      [13, '16:30', 'o', 'Medjoul at 25% and Kimia at 24%. Revising the quote.'],
+      [6, '13:10', 'i', 'Is the order packed in sealed cartons? Our staff were concerned about stickiness in humid weather.'],
+      [6, '13:35', 'o', 'Dates are in sealed pouches inside cartons, we also add a moisture sachet in cartons for monsoon months. Not an issue in November.'],
+    ],
+    em: [
+      { d: 21, t: '17:50', dir: 'o', subject: 'Happilo dates and nuts: retail rates for Nutri Basket Mart', atts: [RATE_CARD],
+        body: `Dear Farhan sir,\n\nThank you for tasting the samples. Attaching our rate card. A few lines from your shortlist:\n\n  Item                                    Pack    Shelf price   Margin\n  International Ajwa Dates                500g    Rs 795        22%\n  International King Medjoul Dates        200g    Rs 395        24%\n  Super Soft Kimia Dates                  500g    Rs 395        22%\n  Premium Whole Cashew Nuts               200g    Rs 336        24%\n\n${DIVYA}` },
+      { d: 13, t: '17:00', dir: 'o', subject: 'Quote HI-Q-2611-21: dates order for Nutri Basket Mart', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-21_NutriBasket.pdf'],
+        body: `Dear Farhan sir,\n\nQuote with the margins we discussed:\n\n  Item                          Qty    Shelf price   Your price   Amount (Rs)\n  Ajwa Dates 500g               20     795           596          11,920\n  King Medjoul Dates 200g       10     395           296           2,960\n  Kimia Dates 500g              10     395           300           3,000\n  Total before GST                                                  17,880\n  GST 5%                                                               894\n  Total                                                             18,774\n\nDelivery to Banjara Hills is free. Payment: advance for the first order.\n\n${DIVYA}` },
+      { d: 7, t: '11:20', dir: 'i', subject: 'Re: Quote HI-Q-2611-21: dates order for Nutri Basket Mart',
+        body: `Divya,\n\nWe will go ahead with the order, only holding for our owner to approve the advance payment. Should be done this week. Please keep the cartons ready.\n\nFarhan Sheikh\nNutri Basket Mart` },
+    ],
+    calls: [
+      { d: 22, t: '12:40', outcome: 'completed', secs: 168, summary: 'Upmarket store, health aisle. Tasted the samples, liked Ajwa and Medjoul. Wants better margin on Ajwa.', next: 'Send rate card and a quote at 25 percent on Ajwa.',
+        gen: { topic: 'how you liked the dates and nuts samples', objection: 'a 22 percent margin on Ajwa is low as it is his best seller', answer: 'for a bigger combined order we can lift it to 25 percent, which is the highest we give on Ajwa', nextStep: 'Divya sends the rate card and a quote at the better margin', rep: 'Divya', tone: 'warm' } },
+    ],
+    events: [
+      { d: 24, t: '15:30', kind: 'sample', text: 'Sample set (Ajwa, Medjoul, Kimia, cashew) sent by DTDC, AWB 7112 4410 8802' },
+      { d: 24, t: '15:40', kind: 'stage', text: 'Moved to Sample sent' },
+      { d: 13, t: '17:00', kind: 'quote', text: 'Quote HI-Q-2611-21 sent, Rs 18,774 with GST' },
+    ],
+    upcoming: [{ inDays: 1, t: '11:30', ch: 'whatsapp', label: 'Check on advance payment for the dates order' }],
+  },
+
+  /* ------------------------------ Gupta Dry Fruit Emporium (interested) ------------------------------ */
+  {
+    co: 'Gupta Dry Fruit Emporium',
+    sent: ['positive', 'wants_pricing', 'Moves about 50 kg a month, liked the margin, asking for 15 days credit after the first orders.'],
+    voiceSent: ['positive', 'wants_sample', 'Pack sizes and margin are fine, wants to see the pistachio pack and confirm credit terms.'],
+    wa: [
+      [19, '10:30', 'o', 'Hello Manoj ji, Divya from Happilo. We supply sealed nuts and dry fruits to retailers in Delhi. Can I send the trade rate card?'],
+      [19, '12:50', 'i', 'Haan bhejiye. Hum cashew, pista aur akhrot zyada bechte hain. Mahine ka 50 kg aaraam se ho jata hai.'],
+      [19, '13:05', 'o', 'Sure, sharing the PDF now. Premium Whole Cashew 200g is shelf price 336 and Jumbo Roasted Pistachio 200g is 353. Retailer margin is around 22 to 25 percent depending on quantity.', '[Rate card] Happilo_B2B_RateCard_Nov2026.pdf'],
+      [18, '11:40', 'i', 'Margin theek lag raha hai. Minimum order kitna hai?'],
+      [18, '12:00', 'o', 'For Delhi we start at one carton of mixed SKUs, around Rs 18,000. Delivery is free above Rs 25,000.'],
+      [17, '17:25', 'i', 'Okay. Kya aap credit dete ho? Hum purane customers ko 15 din ka credit dete hain, toh humein bhi thoda time chahiye.'],
+      [17, '17:50', 'o', 'First two orders are advance, after that we can discuss 15 days. Let me check with my manager and confirm tomorrow.'],
+      [12, '12:15', 'o', 'Manoj ji, good news, manager said 15 days credit can start from the third order. Also I can send one Jumbo Pistachio pack with your first order to check.'],
+      [11, '16:30', 'i', 'Theek hai. Akhrot ka rate dobara bhejna, Kashmiri wala 200g ka.'],
+      [11, '16:55', 'o', 'Kashmiri Walnut Kernels 200g shelf price is 387, your price about 295. Californian walnut kernels 200g is 421.'],
+      [5, '12:05', 'o', 'Manoj ji, Aarav from our team called you today. Sharing the summary: pistachio pack with first order, 15 days credit from third order.'],
+      [2, '11:20', 'i', 'Main pehle order Rs 20,000 ka dunga. List bhej deta hu kal tak. Pista aur kaju zyada.'],
+      [2, '11:45', 'o', 'Sure Manoj ji. I will keep the free delivery if you can make it Rs 25,000 with 5 kg extra walnut.'],
+    ],
+    em: [
+      { d: 17, t: '10:40', dir: 'o', subject: 'Happilo trade rates for Gupta Dry Fruit Emporium', atts: [RATE_CARD],
+        body: `Dear Manoj ji,\n\nThank you for your interest. Attaching our November trade rate card. For your Karol Bagh shop:\n\n  Item                                  Pack    Shelf price   Your price\n  Premium Whole Cashew Nuts             200g    Rs 336        Rs 255\n  Jumbo Roasted Pistachios              200g    Rs 353        Rs 268\n  Kashmiri Walnut Kernels               200g    Rs 387        Rs 295\n  Premium Californian Almonds           200g    Rs 299        Rs 227\n\nMinimum first order Rs 18,000. Free delivery in Delhi above Rs 25,000.\n\n${DIVYA}` },
+      { d: 5, t: '13:00', dir: 'o', subject: 'Summary of our call and next steps', atts: [FSSAI_PDF],
+        body: `Dear Manoj ji,\n\nThank you for speaking with Aarav today. Summary:\n  - Pistachio pack included with your first order for you to check\n  - First two orders on advance, 15 days credit from the third order\n  - FSSAI certificate attached for your records\n\n${DIVYA}` },
+    ],
+    calls: [
+      { d: 5, t: '11:10', outcome: 'completed', secs: 132, summary: 'Pack sizes and margin are fine. Wants to see the pistachio pack and confirm credit terms.', next: 'Send a pistachio pack with the first order and confirm 15 days credit from the third order.',
+        lines: [
+          'A:Namaste, am I speaking with Manoj ji? This is Aarav from Happilo.',
+          'U:Haan Manoj bol raha hu. Divya madam ne rate card bheja tha.',
+          'A:Ji sir. I wanted to check if the margin and pack sizes work for your Karol Bagh shop.',
+          'U:Pack sizes theek hain. Bas credit ka dekhna hai, aur ek baar sample dekhna chahta hu pistachio ka.',
+          'A:Sure sir. How much do you sell in a month right now, roughly?',
+          'U:Almond cashew mila ke 50 kg ke aaspaas. Pista kam, par winter me badhta hai.',
+          'A:Good. Our pistachio is Jumbo roasted and salted, 200g sealed pack. Many shops sell it as a gifting pack in winter.',
+          'U:Haan wo dekhna hai. Aur Diwali ke baad shaadi season bhi hai.',
+          'A:Yes sir, wedding season is very good for dry fruits. I will ask Divya ma am to send a pistachio pack with your first order.',
+          'U:Ok ok, thik hai. Aur credit?',
+          'A:First two orders are advance sir, from the third order Divya ma am said 15 days credit is possible. She will confirm in writing.',
+          'U:Theek hai. Delivery kitne din me hogi Karol Bagh?',
+          'A:From our Delhi warehouse it is usually 2 working days sir. Above Rs 25,000 delivery is free.',
+          'U:25 se kam ho to?',
+          'A:Then it is Rs 350 per order sir. Most shops club walnut or almonds to cross 25,000.',
+          'U:Hmm, dekhte hai. Akhrot ka rate bhi chahiye tha.',
+          'A:Kashmiri walnut kernels 200g, your price is about Rs 295. I will ask Divya ma am to send it again on WhatsApp.',
+          'U:Haan bhej do. Main list bana ke bhejta hu is hafte.',
+          'A:Thank you Manoj ji. Have a good day.',
+          'U:Ok, bye.',
+        ] },
+    ],
+    events: [
+      { d: 12, t: '12:15', kind: 'note', text: '15 days credit approved from the third order' },
+      { d: 5, t: '12:05', kind: 'note', text: 'Call summary sent on WhatsApp and email' },
+    ],
+    upcoming: [{ inDays: 1, t: '11:00', ch: 'whatsapp', label: 'Ask for the Rs 20,000 first order list' }],
+  },
+
+  /* ------------------------------ Meridian Software (interested) ------------------------------ */
+  {
+    co: 'Meridian Software Pvt Ltd',
+    sent: ['positive', 'wants_pricing', 'Needs 680 boxes across three cities, budget around Rs 1,150, waiting for VP approval.'],
+    wa: [
+      [16, '10:15', 'o', 'Hi Shilpa, Rohan from Happilo. Thanks for your enquiry. For 600+ boxes we can do a custom box with your logo sleeve. What budget per box are you looking at?'],
+      [16, '12:40', 'i', 'Around 1000 to 1200. Mostly nuts and dates, nothing too sweet. Some people are diabetic so no heavy mithai.'],
+      [16, '13:05', 'o', 'Makes sense. A 5-item box with almonds, cashews, pistachios, Medjoul dates and a trail mix comes to about Rs 1,150 with the printed sleeve. I will share photos.', '[Catalogue PDF] Corporate_Gifting_Catalogue_2026.pdf'],
+      [15, '15:30', 'i', 'Please send. Also can the delivery be to 3 offices, Pune, Hyderabad and Noida?'],
+      [15, '15:55', 'o', 'Yes, we can ship to all three. Multi-city adds about 4 working days. Sending the deck and a sample proposal on email.'],
+      [12, '11:10', 'i', 'Got the mail. Let me show it to my VP, will revert by Monday.'],
+      [9, '17:20', 'i', 'VP wants to see a sample box before approving. Can you courier one to Hinjewadi?'],
+      [9, '17:45', 'o', 'Sure Shilpa. Sample Premium box sent tomorrow by Blue Dart. I will share the AWB.'],
+      [8, '14:00', 'o', 'Sample dispatched, AWB 5589 3321 0071. Should reach tomorrow evening.'],
+      [6, '12:30', 'i', 'Sample received, the box looks good. VP liked the dates especially. Needs a separate Rs 1,800 box for 80 clients.'],
+      [6, '12:55', 'o', 'Great. For the client box at Rs 1,799 we include Kashmiri saffron tin and walnuts. I will share a quote for 80 boxes.'],
+      [3, '16:10', 'i', 'Thanks for the detailed quote. VP is travelling, approval likely by early next week.'],
+      [1, '11:00', 'o', 'Hi Shilpa, hope the VP is back. Let me know if you need any change in the quote. Production slot for 12 working days needs a go-ahead by 25 Nov for 15 Dec delivery.'],
+    ],
+    em: [
+      { d: 15, t: '16:30', dir: 'o', subject: 'Gifting proposal for Meridian Software: 680 boxes', cc: 'rohan.verma@happilo.com', atts: [GIFT_CAT],
+        body: `Hi Shilpa,\n\nThank you for your time. Attaching the proposal for 680 boxes (600 employee and 80 client) with delivery to Pune, Hyderabad and Noida.\n\n  Box                           Qty    Rate (Rs)   Amount (Rs)\n  Employee box with sleeve      600    1,150       6,90,000\n  Client box (premium)           80    1,799       1,43,920\n  Multi-city delivery                               36,000\n  Total before GST                                  8,69,920\n\nDelivery split: Pune 320, Hyderabad 180, Noida 180. Production time 12 working days from artwork sign-off.\n\n${ROHAN}` },
+      { d: 3, t: '15:50', dir: 'o', subject: 'Re: Gifting proposal for Meridian Software: updated quote', atts: ['Quote_HI-Q-2611-29_Meridian.pdf'],
+        body: `Hi Shilpa,\n\nAttaching the updated quote with a separate Rs 1,799 client box for 80 units. GST invoices will be raised separately for each location. Quote valid till 25 November.\n\n${ROHAN}` },
+      { d: 3, t: '17:10', dir: 'i', subject: 'Re: Gifting proposal for Meridian Software: updated quote', cc: 'vp.admin@meridiansoft.in',
+        body: `Hi Rohan,\n\nReceived, thank you. VP is travelling till Monday. Approval should come soon after. Please keep the delivery slots in mind.\n\nShilpa Narang\nAdmin, Meridian Software` },
+    ],
+    calls: [
+      { d: 10, t: '12:00', outcome: 'completed', secs: 224, summary: 'Needs 680 gifts for three cities, no mithai because some employees are diabetic. Budget about Rs 1,150, VP needs to approve.', next: 'Send sample Premium box and updated quote.',
+        gen: { topic: 'the year-end gift boxes for 680 people', objection: 'the VP wants to see and taste a sample before approving such a large order', answer: 'we can courier a Premium box to Hinjewadi tomorrow and the VP can decide with the box in hand', nextStep: 'Rohan couriers a sample and sends the updated quote', rep: 'Rohan', tone: 'warm' } },
+    ],
+    events: [
+      { d: 8, t: '14:00', kind: 'sample', text: 'Sample Premium box sent by Blue Dart, AWB 5589 3321 0071' },
+      { d: 3, t: '15:50', kind: 'quote', text: 'Updated quote HI-Q-2611-29 sent, valid till 25 Nov' },
+    ],
+    upcoming: [{ inDays: 3, t: '11:00', ch: 'email', label: 'Follow up on VP approval for 680 boxes' }],
+  },
+
+  /* ------------------------------ Hotel Grand Orchid (interested) ------------------------------ */
+  {
+    co: 'Hotel Grand Orchid',
+    sent: ['positive', 'asking_details', 'Redoing in-room snack baskets for December. Asked for FSSAI copy and spec sheets, quote sent.'],
+    wa: [
+      [15, '10:20', 'o', 'Good morning Imran sir, Karthik from Happilo B2B. We supply roasted nuts, trail mixes and dates to hotels in Mumbai for in-room baskets and breakfast counters. Can I share our hotel range?'],
+      [15, '14:40', 'i', 'Hello Karthik. Yes we are redoing in-room snack baskets for December, 120 rooms. Send the options and FSSAI.'],
+      [15, '15:05', 'o', 'Sharing our hotel price list and FSSAI copy. For in-room, the 40g snack pouches in 3 flavours work well.', '[FSSAI certificate] Happilo_FSSAI_Certificate.pdf'],
+      [14, '11:30', 'i', 'Prefer small packs, individually sealed. Not more than Rs 60 each. And breakfast buffet needs 1 kg packs of almonds and cashews.'],
+      [14, '11:55', 'o', 'For in-room: Peri Peri Makhana 55g at Rs 76 trade price is the closest. For under Rs 60 I can do 30g nut pouches at Rs 52 for 3,000 pieces.'],
+      [12, '16:00', 'i', 'Send a quote for 3,600 pouches a month (30 per room per month) and 1 kg packs for breakfast, 12 kg monthly.'],
+      [12, '16:25', 'o', 'Noted. Quote on your email by tomorrow with GST and delivery to Bandra.'],
+      [11, '13:10', 'o', 'Quote sent sir. 3,600 pouches at Rs 52 and 12 kg bulk at Rs 1,150 a kg for cashew and Rs 920 for almonds.', '[Quote] Quote_HI-Q-2611-18_GrandOrchid.pdf'],
+      [8, '12:00', 'i', 'Got the quote. Our F&B head wants a sample pack of each flavour. Send to hotel.'],
+      [8, '12:25', 'o', 'Dispatching a sample set of 3 flavours tomorrow by our Mumbai partner, will share the tracking.'],
+      [6, '10:00', 'o', 'Sample set couriered via Delhivery, AWB 3321 7710 2298. Should reach by tomorrow.'],
+      [4, '17:10', 'i', 'Samples received. Chef liked the roasted almonds. Please share spec sheets, allergen details also.'],
+      [4, '17:35', 'o', 'Sharing spec sheets with allergen details for all SKUs.', '[Spec sheet] Happilo_Spec_And_Allergen_Sheet.pdf'],
+      [1, '12:30', 'i', 'Purchase committee meets on Tuesday. Will give a final answer after that.'],
+    ],
+    em: [
+      { d: 14, t: '10:00', dir: 'o', subject: 'Happilo supply for Hotel Grand Orchid in-room baskets', atts: [RATE_CARD, FSSAI_PDF],
+        body: `Dear Imran sir,\n\nThank you for your interest. Attaching our hotel price list and FSSAI certificate (licence 11222999000365). For in-room baskets we can supply individually sealed pouches in small sizes, and 1 kg packs for the breakfast counter.\n\n${KARTHIK}` },
+      { d: 11, t: '13:00', dir: 'o', subject: 'Quote HI-Q-2611-18: monthly supply for Hotel Grand Orchid', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-18_GrandOrchid.pdf'],
+        body: `Dear Imran sir,\n\nQuote for the monthly supply:\n\n  Item                               Qty/month    Rate (Rs)   Amount (Rs)\n  Roasted nut pouch 30g (3 flavours) 3,600        52          1,87,200\n  Roasted cashew 1 kg                6 kg         1,150       6,900\n  Roasted almonds 1 kg               6 kg         920         5,520\n  Total before GST                                            1,99,620\n  GST 12% on pouches, 5% on bulk                                 23,085\n  Total                                                       2,22,705\n\nDelivery to Bandra West is free on a weekly schedule. Payment 15 days from invoice.\n\n${KARTHIK}` },
+      { d: 4, t: '17:40', dir: 'o', subject: 'Spec sheets and allergen details for Hotel Grand Orchid', atts: ['Happilo_Spec_And_Allergen_Sheet.pdf', FSSAI_PDF],
+        body: `Dear Imran sir,\n\nAs requested, attaching spec sheets with allergen information for each SKU and our FSSAI certificate. Please let me know if your F&B head needs a visit to our dispatch for a quality audit.\n\n${KARTHIK}` },
+    ],
+    calls: [
+      { d: 13, t: '15:20', outcome: 'completed', secs: 207, summary: '120-room hotel redoing in-room baskets for December. Wants small sealed pouches under Rs 60 and bulk packs for breakfast.', next: 'Send quote and sample set.',
+        gen: { topic: 'the in-room baskets for December', objection: 'the pouch has to cost under Rs 60 and he is worried about shelf life in a hotel store room', answer: 'the 30g pouch can be done at Rs 52 and shelf life is 9 months, we deliver weekly so the stock stays fresh', nextStep: 'Karthik sends the quote and a sample set of three flavours', rep: 'Karthik', tone: 'warm' } },
+    ],
+    events: [
+      { d: 11, t: '13:10', kind: 'quote', text: 'Quote HI-Q-2611-18 sent, Rs 2,22,705 a month with GST' },
+      { d: 6, t: '10:00', kind: 'sample', text: 'Sample set (3 flavours) sent by Delhivery, AWB 3321 7710 2298' },
+      { d: 4, t: '17:35', kind: 'note', text: 'Spec and allergen sheets shared' },
+    ],
+    upcoming: [{ inDays: 5, t: '11:30', ch: 'call', label: 'Call after the purchase committee meeting' }],
+  },
+
+  /* ------------------------------ Royal Occasions Gifting (interested) ------------------------------ */
+  {
+    co: 'Royal Occasions Gifting',
+    sent: ['positive', 'asking_details', 'Gifting vendor for banks, needs 250 boxes, asking for box photos and GST invoice details.'],
+    wa: [
+      [24, '11:00', 'o', 'Hello Tanvi ji, Ritu from Happilo Key Accounts. We make premium dry fruit gift boxes for corporate gifting. I understand you prefer email. May I send details there?'],
+      [24, '13:20', 'i', 'Hi Ritu. Yes email please. We handle gifts for BFSI clients, need around 250 boxes for year end.'],
+      [24, '13:40', 'o', 'Will do right away.'],
+      [18, '16:00', 'i', 'Received. Can you send actual photos of the Premium box? Our client wants to see before shortlisting.'],
+      [18, '16:30', 'o', 'Sending photos of the Premium and Select boxes now, open and closed.', '[Photos] Premium_Box_Photos.zip'],
+      [10, '12:15', 'i', 'Client shortlisted the Premium box. Need GST invoice with their company name and GSTIN, different from ours.'],
+      [10, '12:40', 'o', 'Yes, we can bill directly in the client name if the PO comes in their name, or bill you and give a delivery challan. Which do you prefer?'],
+      [5, '15:40', 'i', 'We will bill to the client directly. Will send their GST details.'],
+      [5, '16:00', 'o', 'Fine Tanvi ji. Send the PO draft with GST and delivery address when ready, I will freeze production dates.'],
+    ],
+    em: [
+      { d: 24, t: '13:50', dir: 'o', subject: 'Premium corporate gift boxes for BFSI clients', cc: 'ritu.nambiar@happilo.com', atts: [GIFT_CAT, RATE_CARD],
+        body: `Dear Tanvi ji,\n\nThank you for your interest. Attaching our gifting catalogue and rate card. For BFSI clients our Premium box at Rs 1,299 is the most selected:\n\n  Premium Box   almonds 100g, cashews 100g, pistachios 100g, Medjoul dates 100g, trail mix pouch\n  Sleeve        printed with client logo, Rs 40 a box above 200 boxes\n  Delivery      pan-India, 5 to 7 working days after dispatch\n\n${sig()}` },
+      { d: 17, t: '11:20', dir: 'i', subject: 'Re: Premium corporate gift boxes for BFSI clients',
+        body: `Hi Ritu,\n\nThank you. Our client's procurement needs: (1) GST invoice in their name, (2) delivery challan for each of their 6 branches, (3) FSSAI and shelf life details. Can you share a sample compliance pack?\n\nRegards,\nTanvi Shah\nRoyal Occasions Gifting, Powai` },
+      { d: 16, t: '13:00', dir: 'o', subject: 'Re: Premium corporate gift boxes for BFSI clients: compliance pack', cc: 'accounts@happilo.com', atts: [FSSAI_PDF, 'Happilo_Compliance_Pack_Gifting.pdf'],
+        body: `Dear Tanvi ji,\n\nAttaching our compliance pack with FSSAI licence, GST registration, shelf life certificate and sample delivery challan format. We can raise invoices in the client name and issue separate challans for each branch.\n\n${sig()}` },
+    ],
+    calls: [
+      { d: 20, t: '12:30', outcome: 'completed', secs: 188, summary: 'Gifting vendor for banks. Needs about 250 boxes. Prefers email, wants photos and compliance details.', next: 'Send box photos and compliance pack by email.',
+        gen: { topic: 'the premium boxes for your bank clients', objection: 'banks have strict vendor compliance and want GST invoices in the client name', answer: 'we can invoice the client directly and provide a compliance pack with FSSAI and GST details', nextStep: 'Ritu emails box photos and the compliance pack', rep: 'Ritu', tone: 'cool' } },
+    ],
+    events: [
+      { d: 18, t: '16:30', kind: 'note', text: 'Box photos shared on WhatsApp' },
+      { d: 16, t: '13:00', kind: 'note', text: 'Compliance pack sent (FSSAI, GST, challan format)' },
+      { d: 10, t: '12:40', kind: 'stage', text: 'Client shortlisted the Premium box' },
+    ],
+    upcoming: [{ inDays: 2, t: '11:00', ch: 'email', label: 'Ask for the PO draft and GST details' }],
+  },
+
+  /* ------------------------------ Brew Room Cafe (interested) ------------------------------ */
+  {
+    co: 'Brew Room Cafe',
+    sent: ['positive', 'wants_pricing', 'Needs about 8 kg a week for three cafes, wants a written quote with GST for accounts.'],
+    wa: [
+      [13, '10:10', 'o', 'Hi Sneha, Karthik from Happilo. Heard from Aditya that you want snack options for the cafes. We can do 1 kg bulk packs of roasted and salted almonds, cashews and party mix.'],
+      [13, '12:30', 'i', 'Yes. We want roasted almonds and cashews for the counter jars, around 8 kg a week across 3 outlets.'],
+      [13, '12:50', 'o', 'For that volume I can offer 1 kg packs at about Rs 1,150 a kg for cashew and Rs 920 for almonds. Delivered to Indiranagar, weekly or fortnightly.'],
+      [12, '15:20', 'i', 'Can you share the exact prices on mail? Our accounts team needs it with GST.'],
+      [12, '15:40', 'o', 'Sure, will mail within the hour.'],
+      [11, '12:00', 'o', 'Sneha, quote is on your email. Rs 8,694 a week with GST for 8 kg of mixed items.', '[Quote] Quote_HI-Q-2611-14_BrewRoom.pdf'],
+      [9, '11:15', 'i', 'Thanks. Do you have small 200g trail mix packs for takeaway, with our cafe sticker?'],
+      [9, '11:40', 'o', 'We can supply 200g Nutty Trail Mix with your sticker on the pack for 500+ units. Rs 205 trade price, sticker Rs 3 each.'],
+      [6, '14:30', 'i', 'Good. We will start with a trial. 4 kg this week and see how it moves.'],
+      [6, '14:55', 'o', 'Sure Sneha. I will send a trial invoice for 4 kg, advance payment and delivery on Wednesday.'],
+      [3, '10:50', 'i', 'Paid the trial amount, delivery for tomorrow?'],
+      [3, '11:10', 'o', 'Yes, tomorrow before noon. I have noted the Indiranagar address.'],
+      [1, '13:00', 'i', 'Received. Customers loved the roasted almonds. We will confirm the weekly order after the weekend.'],
+    ],
+    em: [
+      { d: 12, t: '16:30', dir: 'o', subject: 'Quote HI-Q-2611-14: weekly nuts supply for Brew Room Cafe', cc: 'accounts@happilo.com', atts: ['Quote_HI-Q-2611-14_BrewRoom.pdf', RATE_CARD],
+        body: `Dear Sneha,\n\nPlease find the written quote for your three outlets.\n\n  Item                               Qty/week   Rate (Rs/kg)   Amount (Rs)\n  Roasted & salted almonds 1 kg      4 kg       920            3,680\n  Roasted & salted cashews 1 kg      4 kg       1,150          4,600\n  Total before GST                                              8,280\n  GST 5%                                                          414\n  Total per week                                                8,694\n\nDelivery to Indiranagar is free for weekly orders above Rs 8,000.\n\n${KARTHIK}` },
+      { d: 3, t: '12:00', dir: 'o', subject: 'Trial order invoice HI-2611-0187, Brew Room Cafe', atts: ['Happilo_Invoice_HI-2611-0187.pdf'],
+        body: `Dear Sneha,\n\nThank you for the payment. Invoice attached for the trial order of 4 kg (2 kg almonds, 2 kg cashews). Delivery is scheduled tomorrow before noon.\n\n${KARTHIK}` },
+    ],
+    calls: [
+      { d: 10, t: '15:00', outcome: 'completed', secs: 164, summary: 'Three outlets in Indiranagar. Wants roasted almonds and cashews for counter jars and small snack packs for takeaway.', next: 'Send written quote with GST for the accounts team.',
+        gen: { topic: 'the roasted nuts for your cafe counters', objection: 'her accounts team will compare with the wholesaler who gives loose nuts at a lower rate', answer: 'ours are sealed 1 kg packs with batch numbers and a GST invoice, and wastage is much lower than loose stock', nextStep: 'Karthik emails a written quote with GST today', rep: 'Karthik', tone: 'warm' } },
+    ],
+    events: [
+      { d: 12, t: '16:30', kind: 'quote', text: 'Quote HI-Q-2611-14 sent, Rs 8,694 a week with GST' },
+      { d: 3, t: '11:10', kind: 'order', text: 'Trial order of 4 kg paid and booked' },
+      { d: 2, t: '11:30', kind: 'order', text: 'Trial order delivered to Indiranagar' },
+    ],
+    upcoming: [{ inDays: 4, t: '11:00', ch: 'whatsapp', label: 'Ask for the weekly order confirmation' }],
+  },
+
+  /* ------------------------------ Balaji Wholesale Mart (lost) ------------------------------ */
+  {
+    co: 'Balaji Wholesale Mart',
+    sent: ['negative', 'already_using_competitor', 'Ordered from a local importer about Rs 40 a kilo cheaper on loose cashew. Open to branded packs later.'],
+    voiceSent: ['negative', 'already_using_competitor', 'Went with the cheaper local importer for loose cashew, may revisit for branded packs.'],
+    wa: [
+      [44, '10:40', 'o', 'Namaste Ramesh ji, Divya from Happilo B2B. We are looking for wholesale partners in Jaipur for sealed nuts and dry fruits. Can I share carton rates?'],
+      [44, '15:10', 'i', 'Namaste. Humare paas Sanganer me godown hai, mithai walon aur kiranon ko loose maal dete hain. Rates bhejo.'],
+      [44, '15:30', 'o', 'Sharing the carton rate card Ramesh ji. Cashew W240 5 kg carton is Rs 790 a kg.', '[Rate card] Happilo_B2B_RateCard_Nov2026.pdf'],
+      [41, '12:20', 'i', 'Local importer se 750 me mil raha hai loose me. Aap ka 790 jyada hai.'],
+      [41, '12:50', 'o', 'Ours is sealed with batch number and grading, W240 only. I can do Rs 775 on a first order of Rs 2 lakh.'],
+      [37, '17:00', 'i', 'Sample bhejo almonds aur cashew ka.'],
+      [37, '17:20', 'o', 'Sending 1 kg each by Delhivery today, AWB 3321 6602 1188.'],
+      [32, '12:40', 'i', 'Maal accha hai. Par customers sirf rate dekhte hain. Mere customer ko loose me 40 rupaye kilo kam chahiye.'],
+      [32, '13:10', 'o', 'I understand Ramesh ji. The difference is mainly sealed packing and shelf life. Would a smaller trial lot help?'],
+      [25, '11:30', 'i', 'Maine local importer se order de diya. Abhi aapka lena mushkil hai. Aage branded pack ka sochenge.'],
+      [25, '11:55', 'o', 'Thank you for telling us Ramesh ji. I will stay in touch for branded packs, and if the importer quality slips, you know where to find us.'],
+    ],
+    em: [
+      { d: 43, t: '10:30', dir: 'o', subject: 'Wholesale cartons for Balaji Wholesale Mart, Jaipur', atts: [RATE_CARD],
+        body: `Dear Ramesh ji,\n\nThank you for your time. Attaching the carton rate card (5 kg and 10 kg). Cashew W240 5 kg at Rs 790 a kg and Californian almonds 5 kg at Rs 895 a kg. Free freight in Jaipur above Rs 1 lakh.\n\n${DIVYA}` },
+      { d: 40, t: '12:00', dir: 'o', subject: 'Revised rate for first order: Balaji Wholesale Mart', atts: ['Quote_HI-Q-2610-44_Balaji.pdf'],
+        body: `Dear Ramesh ji,\n\nAs discussed, cashew 5 kg carton at Rs 775 a kg on a first order above Rs 2 lakh. Quote attached. Valid for 10 days.\n\n${DIVYA}` },
+      { d: 25, t: '11:40', dir: 'i', subject: 'Re: Revised rate for first order: Balaji Wholesale Mart',
+        body: `Divya ji,\n\nThank you for the samples and quote. We have placed our cashew order with a local importer who is Rs 40 a kilo cheaper. Not possible to continue for now. May come back for branded packs.\n\nRamesh Agarwal\nBalaji Wholesale Mart, Sanganer` },
+    ],
+    calls: [
+      { d: 34, t: '15:40', outcome: 'completed', secs: 176, summary: 'Wholesaler in Sanganer, supplies sweet shops and kiranas with loose stock. Price is the only deciding factor, a local importer is about Rs 40 a kilo cheaper.', next: 'No further calls. Revisit in March for branded packs.',
+        gen: { topic: 'the samples we sent for your cashew and almonds', objection: 'a local importer is about Rs 40 a kilo cheaper on loose cashew and his customers only look at price', answer: 'our advantage is sealed packing and batch numbers, so it suits retail packs better than loose wholesale', nextStep: 'Divya will stay in touch for branded packs later in the year', rep: 'Divya', tone: 'cool' } },
+    ],
+    events: [
+      { d: 37, t: '17:20', kind: 'sample', text: 'Samples (cashew and almonds, 1 kg each) sent by Delhivery, AWB 3321 6602 1188' },
+      { d: 25, t: '11:55', kind: 'stage', text: 'Moved to Lost, chose a cheaper local importer' },
+    ],
+  },
+];

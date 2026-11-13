@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
+import { PlayBar, TranscriptTurns } from '../_components/threads';
 import { parseSentiment, stageLabel, interestLabel, intentLabel, formatWhen, type Lead } from '@/lib/data/b2bCrm';
 import {
   parseVoiceTranscript,
@@ -171,7 +172,7 @@ function VoiceDashboard({ calls }: { calls: VoiceCall[] }) {
   const totalTalkSec = connected.reduce((s, c) => s + (c.log.duration_seconds ?? 0), 0);
   const avgTalkSec = connected.length ? totalTalkSec / connected.length : 0;
   const totalCost = calls.reduce((s, c) => s + (c.log.cost_usd ?? 0), 0);
-  const positive = calls.filter((c) => c.sentiment === 'positive').length;
+  const positive = connected.filter((c) => c.sentiment === 'positive').length;
 
   const recent = calls.slice(0, 8);
 
@@ -181,7 +182,7 @@ function VoiceDashboard({ calls }: { calls: VoiceCall[] }) {
         <Tile accent="var(--purple)" label="Calls placed" value={calls.length} icon={<PhoneCall size={12} />} sub="In this date range" />
         <Tile accent="var(--green)" label="Picked up" value={connected.length} icon={<CheckCheck size={12} />} sub={`${connectRate}% pick-up rate`} />
         <Tile accent="var(--orange)" label="Voicemail" value={voicemail.length} icon={<Voicemail size={12} />} sub={`${noAnswer.length} no answer`} />
-        <Tile accent="var(--blue)" label="Positive calls" value={positive} icon={<TrendingUp size={12} />} sub="Keen to move ahead" />
+        <Tile accent="var(--blue)" label="Positive calls" value={positive} icon={<TrendingUp size={12} />} sub={`${connected.length ? Math.round((positive / connected.length) * 100) : 0}% of answered calls`} />
       </div>
 
       <div className="liquid-card mb-24" style={{ padding: '24px' }}>
@@ -199,7 +200,7 @@ function VoiceDashboard({ calls }: { calls: VoiceCall[] }) {
             <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--green)' }}>{formatUsd(totalCost)}</div>
           </div>
           <div>
-            <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Calls with notes</span>
+            <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Calls with a transcript</span>
             <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--label-primary)' }}>
               {calls.filter((c) => c.turns.length > 0).length}
             </div>
@@ -391,7 +392,7 @@ function VoiceLogs({ calls }: { calls: VoiceCall[] }) {
                         )}
                       </td>
                       <td style={{ padding: '10px 8px' }}>
-                        {c.recordingUrl ? <PlayCircle size={14} style={{ color: 'var(--brand)' }} /> : '—'}
+                        {c.recordingUrl || c.connected ? <PlayCircle size={14} style={{ color: 'var(--brand)' }} /> : '—'}
                       </td>
                     </tr>
                   );
@@ -454,17 +455,29 @@ function CallDetailModal({ call, onClose }: { call: VoiceCall; onClose: () => vo
             {lead?.voice_note && <DetailField label="Note for the team" value={lead.voice_note} full />}
           </div>
 
-          {recordingUrl && (
+          {recordingUrl ? (
             <div style={{ marginBottom: '18px' }}>
               <SectionLabel icon={<PlayCircle size={12} />}>Recording</SectionLabel>
               <audio controls src={recordingUrl} style={{ width: '100%', marginTop: '8px' }} />
             </div>
-          )}
+          ) : call.connected ? (
+            <div style={{ marginBottom: '18px' }}>
+              <SectionLabel icon={<PlayCircle size={12} />}>Recording</SectionLabel>
+              <PlayBar seconds={log.recording_seconds ?? log.duration_seconds} />
+            </div>
+          ) : null}
 
           {log.summary && (
             <div style={{ marginBottom: '18px' }}>
               <SectionLabel>Summary</SectionLabel>
               <p style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--label-secondary)', marginTop: '6px', marginBottom: 0 }}>{log.summary}</p>
+            </div>
+          )}
+
+          {log.next_step && (
+            <div style={{ marginBottom: '18px' }}>
+              <SectionLabel>Next step</SectionLabel>
+              <p style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--brand)', fontWeight: 600, margin: 0 }}>{log.next_step}</p>
             </div>
           )}
 
@@ -476,33 +489,14 @@ function CallDetailModal({ call, onClose }: { call: VoiceCall; onClose: () => vo
           )}
 
           <div>
-            <SectionLabel>Conversation</SectionLabel>
+            <SectionLabel>Conversation{turns.length ? ` · ${turns.length} turns` : ''}</SectionLabel>
             {turns.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--label-tertiary)', marginTop: '8px', whiteSpace: 'pre-wrap' }}>
                 {transcriptFallback ?? 'Nothing was recorded for this call.'}
               </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                {turns.map((turn, idx) => {
-                  const customer = turn.role === 'customer';
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        alignSelf: customer ? 'flex-start' : 'flex-end',
-                        maxWidth: '80%',
-                        background: customer ? 'var(--fill-tertiary)' : 'rgba(0, 82, 59, 0.08)',
-                        padding: '9px 13px',
-                        borderRadius: customer ? '2px 12px 12px 12px' : '12px 2px 12px 12px',
-                      }}
-                    >
-                      <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', fontWeight: 600, display: 'block', marginBottom: '3px' }}>
-                        {turn.role === 'customer' ? (log.customer_name ?? 'Lead') : turn.role === 'system' ? 'Note' : 'Aarav'}
-                      </span>
-                      <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--label-primary)' }}>{turn.text}</p>
-                    </div>
-                  );
-                })}
+              <div style={{ marginTop: '8px' }}>
+                <TranscriptTurns turns={turns} customerName={log.customer_name ?? 'Lead'} />
               </div>
             )}
           </div>
@@ -580,7 +574,7 @@ function VoiceAnalytics({ calls }: { calls: VoiceCall[] }) {
 
   const sentimentCounts = ((): [string, number][] => {
     const m = new Map<string, number>();
-    for (const c of calls) {
+    for (const c of connected) {
       if (!c.sentiment) continue;
       m.set(c.sentiment, (m.get(c.sentiment) ?? 0) + 1);
     }
@@ -595,7 +589,7 @@ function VoiceAnalytics({ calls }: { calls: VoiceCall[] }) {
   const withLead = calls.filter((c) => c.lead);
   const wonCount = withLead.filter((c) => c.lead!.current_stage === 'won').length;
   const lostCount = withLead.filter((c) => c.lead!.current_stage === 'lost').length;
-  const positive = calls.filter((c) => c.sentiment === 'positive').length;
+  const positive = connected.filter((c) => c.sentiment === 'positive').length;
 
   return (
     <>

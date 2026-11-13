@@ -7,7 +7,7 @@ import {
   totalStock, coverDays, stockStatus, abcMap, fmtNum, fmtMoney, fmtINR, CATEGORIES, CHANNELS,
   TODAY, parseISO, daysBetween, reorderPointOf, fmtDate,
 } from '@/lib/mock/inventory-utils';
-import { Card, Kpi, KpiGrid, BarRow, ProductCell, TabProps, BRAND, BRAND_MID, GOLD } from './shared';
+import { Card, Kpi, KpiGrid, BarRow, ProductCell, TabProps, BRAND, BRAND_MID, GOLD, ChannelName } from './shared';
 
 export default function OverviewTab({ inventory, go }: TabProps) {
   const ops = useOps();
@@ -159,7 +159,7 @@ export default function OverviewTab({ inventory, go }: TabProps) {
         </Card>
         <Card title="Stock by location">
           {d.locs.map((l) => (
-            <BarRow key={l.key} label={l.label} value={l.val} max={maxLoc} color={l.key === 'warehouse' ? BRAND : BRAND_MID} text={`${fmtNum(l.units)} units  ·  ${fmtMoney(l.val)}`} />
+            <BarRow key={l.key} label={<ChannelName id={l.key} label={l.label} />} value={l.val} max={maxLoc} color={l.key === 'warehouse' ? BRAND : BRAND_MID} text={`${fmtNum(l.units)} units  ·  ${fmtMoney(l.val)}`} />
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--label-secondary)', marginTop: 6 }}>
             <Clock size={13} color={GOLD} /> Bengaluru DC (Hoskote) holds {Math.round((d.locs[0].units / d.units) * 100)}% of units.

@@ -28,6 +28,7 @@ import {
   type RecoveryOutreachRow,
   type ConversationEntry,
 } from '@/lib/data/receivables';
+import { ActivityLink } from '../_components/Conversations';
 
 function isClosed(row: RecoveryOutreachRow): boolean {
   return String(row.closed).toLowerCase() === 'yes' || String(row.status).toLowerCase() === 'closed';
@@ -391,7 +392,8 @@ export default function ReceivablesDashboard({
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--separator)' }}>
                     <td style={{ padding: '12px 8px' }}>
                       <span style={{ fontWeight: '700', display: 'block' }}>{r.party_name ?? '—'}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--label-tertiary)' }}>{r.email ?? '—'}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', display: 'block' }}>{r.email ?? '—'}</span>
+                      <ActivityLink party={r.party_name} compact />
                     </td>
                     <td style={{ padding: '12px 8px' }}>{r.bill_no ?? '—'}</td>
                     <td style={{ padding: '12px 8px' }}>{r.voucher_no ?? '—'}</td>

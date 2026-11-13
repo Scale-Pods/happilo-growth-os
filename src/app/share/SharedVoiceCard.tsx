@@ -142,6 +142,23 @@ export default function SharedVoiceCard({
           </div>
         )}
 
+        {!recordingUrl && outcome === 'connected' && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ ...LABEL_STYLE, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <PlayCircle size={12} /> Recording
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F3F6F2', border: '1px solid rgba(60,60,67,0.12)', borderRadius: '10px', padding: '8px 12px' }}>
+              <PlayCircle size={22} style={{ color: '#00523B', flexShrink: 0, opacity: 0.85 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flex: 1, height: '26px', overflow: 'hidden' }}>
+                {Array.from({ length: 48 }, (_, i) => 6 + ((i * 37) % 17) + ((i * 11) % 7)).map((h, i) => (
+                  <span key={i} style={{ width: '3px', height: `${h}px`, borderRadius: '2px', background: 'rgba(0,82,59,0.28)', flexShrink: 0 }} />
+                ))}
+              </div>
+              <span style={{ fontSize: '11px', color: MUTED, flexShrink: 0 }}>0:00 / {formatDuration(log.recording_seconds ?? log.duration_seconds)}</span>
+            </div>
+          </div>
+        )}
+
         {log.summary && (
           <div style={{ marginBottom: '20px' }}>
             <div style={LABEL_STYLE}>Summary</div>
@@ -149,8 +166,15 @@ export default function SharedVoiceCard({
           </div>
         )}
 
+        {log.next_step && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={LABEL_STYLE}>Next step</div>
+            <p style={{ fontSize: '13.5px', lineHeight: 1.6, color: '#00523B', fontWeight: 600, margin: 0 }}>{log.next_step}</p>
+          </div>
+        )}
+
         <div>
-          <div style={LABEL_STYLE}>Conversation</div>
+          <div style={LABEL_STYLE}>Conversation{turns.length ? ` · ${turns.length} turns` : ''}</div>
           {turns.length === 0 ? (
             <p style={{ fontSize: '13px', color: FAINT, margin: 0, whiteSpace: 'pre-wrap' }}>
               {rawTranscript ?? 'Nothing was recorded for this call.'}

@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
+import { WhatsappThread } from '../_components/threads';
 import { normalizeTranscript } from '@/lib/data/transcript';
 import { parseSentiment, stageLabel, categoryLabel, interestLabel, formatWhen, type Lead, type TranscriptEntry } from '@/lib/data/b2bCrm';
 
@@ -319,40 +320,10 @@ function WaChats({ threads }: { threads: WaThread[] }) {
             <div
               style={{
                 display: 'flex', flexDirection: 'column', gap: '8px', padding: '20px',
-                maxHeight: '560px', overflowY: 'auto', background: 'var(--fill-quaternary)',
+                maxHeight: '560px', overflowY: 'auto', background: '#EEF3EE',
               }}
             >
-              {active.entries.map((entry, idx) => {
-                const inbound = entry.direction === 'inbound';
-                const delivery = !inbound ? parseDeliveryStatus(entry.status) : null;
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      alignSelf: inbound ? 'flex-start' : 'flex-end',
-                      maxWidth: '78%',
-                      background: inbound ? 'var(--bg-layer1, #fff)' : 'rgba(37, 211, 102, 0.16)',
-                      border: delivery?.state === 'failed' ? '1px solid var(--red)' : '1px solid var(--separator)',
-                      padding: '9px 13px',
-                      borderRadius: inbound ? '2px 12px 12px 12px' : '12px 2px 12px 12px',
-                    }}
-                  >
-                    <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--label-primary)' }}>{entry.message}</p>
-                    <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      {formatWhen(entry.at)}
-                      {delivery && delivery.state !== 'unknown' && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: deliveryStateColor(delivery.state) }} title={delivery.detail ?? delivery.state}>
-                          <DeliveryIcon state={delivery.state} size={12} />
-                          <span style={{ textTransform: 'capitalize' }}>{delivery.state}</span>
-                        </span>
-                      )}
-                    </span>
-                    {delivery?.state === 'failed' && delivery.detail && (
-                      <p style={{ fontSize: '10.5px', color: 'var(--red)', margin: '4px 0 0', textAlign: 'right' }}>{delivery.detail}</p>
-                    )}
-                  </div>
-                );
-              })}
+              <WhatsappThread entries={active.entries} />
             </div>
           </>
         )}

@@ -15,6 +15,7 @@ import {
   Send,
 } from 'lucide-react';
 import { REF_NOW } from '@/lib/mock/receivables';
+import { ActivityLink } from '../_components/Conversations';
 import {
   demoWebhook,
   parseAmount,
@@ -164,6 +165,7 @@ export default function UploadInvoiceClient({ rows }: { rows: PartyLedgerRow[] }
                       {r.gstin && (
                         <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', display: 'block' }}>GSTIN: {r.gstin}</span>
                       )}
+                      <ActivityLink party={r.party_name} compact />
                     </td>
                     <td style={{ padding: '12px 8px' }}>
                       <span style={{ display: 'block' }}>{r.particulars ?? '—'}</span>

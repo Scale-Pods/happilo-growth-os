@@ -2,7 +2,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../ClientWrapper';
-import { Send, Inbox, Reply, Search, Clock, MessageSquareText, X } from 'lucide-react';
+import { Send, Inbox, Reply, Search, Clock, MessageSquareText, X, Link2, Paperclip } from 'lucide-react';
+import { EmailThreadView } from '../_components/threads';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 import { normalizeTranscript } from '@/lib/data/transcript';
 import { parseSentiment, stageLabel, interestLabel, formatWhen, type Lead, type TranscriptEntry } from '@/lib/data/b2bCrm';
@@ -164,6 +165,7 @@ function EmailDashboard({
 /* ------------------------------- Inbox ------------------------------- */
 
 function EmailInbox({ threads }: { threads: EmailThread[] }) {
+  const { showToast } = useAppContext();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -194,8 +196,13 @@ function EmailInbox({ threads }: { threads: EmailThread[] }) {
                     {t.lead.company_name}
                     <span className={`badge ${replied ? 'badge-green' : 'badge-orange'}`} style={{ flexShrink: 0 }}>{replied ? 'Replied' : 'Waiting'}</span>
                   </span>
-                  <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {last ? `${last.direction === 'inbound' ? '← ' : '→ '}${stripLines(last.message).slice(0, 58)}` : ''}
+                  <span style={{ fontSize: '11.5px', color: 'var(--label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {last?.subject ?? ''}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {t.entries.some((e) => e.attachments?.length) && <Paperclip size={10} style={{ flexShrink: 0 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{last ? `${last.direction === 'inbound' ? '← ' : '→ '}${stripLines(last.message).slice(0, 58)}` : ''}</span>
+                    <span style={{ marginLeft: 'auto', flexShrink: 0 }}>{t.entries.length}</span>
                   </span>
                 </button>
               );
@@ -209,31 +216,31 @@ function EmailInbox({ threads }: { threads: EmailThread[] }) {
           <Empty text="Pick a conversation from the list." pad />
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.lead.company_name}</h3>
-              <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>{active.lead.email ?? '—'}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '560px', overflowY: 'auto' }}>
-              {active.entries.map((entry, idx) => {
-                const inbound = entry.direction === 'inbound';
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      background: inbound ? 'var(--fill-tertiary)' : 'rgba(0, 82, 59, 0.06)',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      borderLeft: `3px solid ${inbound ? 'var(--green)' : 'var(--blue)'}`,
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.entries[0]?.subject ?? active.lead.company_name}</h3>
+                <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
+                  {active.lead.company_name} · {active.lead.email ?? '—'} · {active.entries.length} email{active.entries.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="badge badge-blue">{stageLabel(active.lead.current_stage)}</span>
+                {active.lead.email && (
+                  <button
+                    className="btn-secondary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px' }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/share/email/${encodeURIComponent(active.lead.email!)}`);
+                      showToast('Public share link copied to clipboard.', 'success');
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', fontWeight: 600 }}>{inbound ? 'Lead' : 'Happilo'}</span>
-                      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{formatWhen(entry.at)}</span>
-                    </div>
-                    <MessageBody text={entry.message} compact />
-                  </div>
-                );
-              })}
+                    <Link2 size={13} /> Share
+                  </button>
+                )}
+              </div>
+            </div>
+            <div style={{ maxHeight: '620px', overflowY: 'auto', paddingRight: '4px' }}>
+              <EmailThreadView entries={active.entries} leadName={active.lead.company_name} />
             </div>
           </>
         )}

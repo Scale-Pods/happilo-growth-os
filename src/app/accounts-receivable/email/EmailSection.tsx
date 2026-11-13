@@ -24,6 +24,7 @@ import {
   type RecoveryOutreachRow,
   type ConversationEntry,
 } from '@/lib/data/receivables';
+import { EmailThreadView, groupEmailThreads, ActivityLink, AttachmentChip, shortDate } from '../_components/Conversations';
 
 type EmailView = 'dashboard' | 'sent' | 'received' | 'analytics';
 
@@ -34,6 +35,8 @@ interface SentEmail {
   content: string;
   sentAt: string | null;
   sentAtDate: Date | null;
+  subject: string;
+  thread: ConversationEntry[];
 }
 
 function collectSentEmails(rows: RecoveryOutreachRow[]): SentEmail[] {
@@ -44,12 +47,16 @@ function collectSentEmails(rows: RecoveryOutreachRow[]): SentEmail[] {
       // Only show when the email was actually sent AND has content.
       if (!sentAt) continue;
       if (!content || !content.trim()) continue;
+      const thread = normalizeConversation(row.email_conversation).filter((e) => e.stage === `Email ${n}`);
+      const subject = thread[0]?.subject ?? (content.match(/^Subject:\s*(.*)$/m)?.[1] ?? `Email ${n}`);
       out.push({
         row,
         step: n,
         content,
         sentAt,
         sentAtDate: parseConversationTimestamp(sentAt),
+        subject,
+        thread,
       });
     }
   }
@@ -237,7 +244,7 @@ function EmailSent({ sentEmails }: { sentEmails: SentEmail[] }) {
   const active = selected ?? filtered[0] ?? null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
       <div className="liquid-card" style={{ padding: '16px' }}>
         <div style={{ position: 'relative', marginBottom: '12px' }}>
           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--label-tertiary)' }} />
@@ -268,8 +275,11 @@ function EmailSent({ sentEmails }: { sentEmails: SentEmail[] }) {
                   {e.row.party_name ?? '—'}
                   <span className="badge badge-blue" style={{ flexShrink: 0 }}>Email {e.step}</span>
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--label-tertiary)' }}>{e.row.bill_no ?? e.row.voucher_no ?? ''}</span>
-                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{e.sentAt ?? '—'}</span>
+                <span style={{ fontSize: '11.5px', color: 'var(--label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.subject}</span>
+                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
+                  <span>{shortDate(e.sentAtDate)}</span>
+                  {e.thread.some(isInbound) ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Replied</span> : <span>No reply</span>}
+                </span>
               </button>
             ))
           )}
@@ -285,13 +295,16 @@ function EmailSent({ sentEmails }: { sentEmails: SentEmail[] }) {
               <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>
                 {active.row.party_name ?? '—'} · Email {active.step}
               </h3>
-              <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>Sent {active.sentAt ?? '—'}</span>
+              <ActivityLink party={active.row.party_name} />
             </div>
-            <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)', marginBottom: '14px' }}>
-              To: {active.row.email ?? '—'} · Bill {active.row.bill_no ?? '—'} · Final Amount{' '}
-              {formatINR(outreachOwedAmount(active.row))}
+            <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)', marginBottom: '16px' }}>
+              {active.row.email ?? '—'} · Bill {active.row.bill_no ?? '—'} · Outstanding {formatINR(outreachOwedAmount(active.row))}
             </div>
-            <EmailBody html={active.content} />
+            {active.thread.length > 0 ? (
+              <EmailThreadView subject={active.subject} entries={active.thread} />
+            ) : (
+              <EmailBody html={active.content} />
+            )}
           </>
         )}
       </div>
@@ -320,7 +333,7 @@ function EmailReceived({
   const active = filtered.find((t) => t.row.id === selectedId) ?? filtered[0] ?? null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
       <div className="liquid-card" style={{ padding: '16px' }}>
         <div style={{ position: 'relative', marginBottom: '12px' }}>
           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--label-tertiary)' }} />
@@ -357,7 +370,7 @@ function EmailReceived({
                     </span>
                   </span>
                   <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {last ? `${isInbound(last) ? '← ' : '→ '}${stripHtml(last.message).slice(0, 60)}` : ''}
+                    {last ? `${isInbound(last) ? '' : 'You: '}${(last.subject ?? stripHtml(last.message)).slice(0, 64)}` : ''}
                   </span>
                 </button>
               );
@@ -371,36 +384,37 @@ function EmailReceived({
           <div style={{ textAlign: 'center', color: 'var(--label-tertiary)', padding: '60px 0' }}>Select a conversation.</div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', gap: '8px', flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.row.party_name ?? '—'}</h3>
-              <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>{active.row.email ?? '—'}</span>
+              <ActivityLink party={active.row.party_name} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '560px', overflowY: 'auto' }}>
-              {active.entries.map((entry, idx) => {
-                const inbound = isInbound(entry);
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      background: inbound ? 'var(--fill-tertiary)' : 'rgba(52, 138, 92, 0.10)',
-                      padding: '12px 16px',
-                      borderRadius: '12px',
-                      borderLeft: `3px solid ${inbound ? 'var(--green)' : 'var(--blue)'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
-                      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', fontWeight: 600 }}>
-                        {inbound ? 'Customer' : 'Happilo'}{entry.stage ? ` · ${entry.stage}` : ''}
-                      </span>
-                      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{entry.timestamp ?? ''}</span>
-                    </div>
-                    <EmailBody html={entry.message} compact />
-                  </div>
-                );
-              })}
+            <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)', marginBottom: '16px' }}>
+              {active.row.email ?? '—'} · Outstanding {formatINR(outreachOwedAmount(active.row))} · {active.row.current_stage ?? ''}
+            </div>
+            <ReceivedAttachments entries={active.entries} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', maxHeight: '640px', overflowY: 'auto', paddingRight: '4px' }}>
+              {groupEmailThreads(active.entries)
+                .reverse()
+                .map((th) => (
+                  <EmailThreadView key={th.subject} subject={th.subject} entries={th.entries} />
+                ))}
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Documents the party sent back (payment advices, screenshots). */
+function ReceivedAttachments({ entries }: { entries: ConversationEntry[] }) {
+  const files = Array.from(new Set(entries.filter(isInbound).flatMap((e) => e.attachments ?? [])));
+  if (!files.length) return null;
+  return (
+    <div style={{ marginBottom: '16px', padding: '10px 12px', borderRadius: '10px', background: 'var(--fill-quaternary)' }}>
+      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Received from the party</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+        {files.map((f) => <AttachmentChip key={f} name={f} />)}
       </div>
     </div>
   );

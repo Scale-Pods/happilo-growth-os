@@ -11,6 +11,7 @@ import {
   callStep,
   type RecoveryOutreachRow,
 } from '@/lib/data/receivables';
+import { CallTranscriptView, ActivityLink, callStatusLabel, shortDate } from '../_components/Conversations';
 
 type VoiceView = 'dashboard' | 'logs' | 'analytics';
 
@@ -24,22 +25,24 @@ interface CallItem {
   sentiment: string | null;
   note: string | null;
   recordingUrl: string | null;
+  duration: string | null;
+  promiseDate: string | null;
 }
 
 function collectCalls(rows: RecoveryOutreachRow[]): CallItem[] {
   const out: CallItem[] = [];
   for (const row of rows) {
     for (let n = 1; n <= 8; n++) {
-      const { content, status, sent_at: sentAt, sentiment, note, recording_url: recordingUrl } = callStep(row, n as 1);
+      const { content, status, sent_at: sentAt, sentiment, note, recording_url: recordingUrl, duration, promise_date: promiseDate } = callStep(row, n as 1);
       if (!sentAt) continue;
       if (!content || !content.trim()) continue;
-      out.push({ row, step: n, content, status, sentAt, sentAtDate: parseConversationTimestamp(sentAt), sentiment, note, recordingUrl });
+      out.push({ row, step: n, content, status, sentAt, sentAtDate: parseConversationTimestamp(sentAt), sentiment, note, recordingUrl, duration, promiseDate });
     }
   }
   return out;
 }
 
-/** A call step "replied" when it has a recorded sentiment — calls have no reply transcript field. */
+/** A call counts as answered when it connected and a sentiment was recorded. */
 function hasReply(c: CallItem): boolean {
   return Boolean(c.sentiment && c.sentiment.trim());
 }
@@ -101,8 +104,8 @@ function VoiceDashboard({ calls }: { calls: CallItem[] }) {
     <>
       <div className="metrics-grid mb-24">
         <Tile accent="var(--purple)" label="Calls Placed" value={calls.length} icon={<PhoneCall size={12} />} sub="In range" />
-        <Tile accent="var(--green)" label="Calls with a Reply" value={replied} icon={<Reply size={12} />} sub="Sentiment recorded" />
-        <Tile accent="var(--blue)" label="Reply Rate" value={`${replyRate}%`} icon={<Phone size={12} />} sub={`${calls.length - replied} awaiting`} />
+        <Tile accent="var(--green)" label="Calls Connected" value={replied} icon={<Reply size={12} />} sub={`${calls.filter((c) => c.promiseDate).length} with a promise to pay`} />
+        <Tile accent="var(--blue)" label="Connect Rate" value={`${replyRate}%`} icon={<Phone size={12} />} sub={`${calls.length - replied} no answer or voicemail`} />
         <Tile accent="var(--orange)" label="Final Amount in Calls" value={formatINR(outstandingInPlay)} icon={<Clock size={12} />} sub="Across parties called" />
       </div>
 
@@ -115,13 +118,14 @@ function VoiceDashboard({ calls }: { calls: CallItem[] }) {
                 <th style={{ padding: '12px 8px' }}>Party</th>
                 <th style={{ padding: '12px 8px' }}>Phone</th>
                 <th style={{ padding: '12px 8px' }}>Step</th>
-                <th style={{ padding: '12px 8px' }}>Status</th>
-                <th style={{ padding: '12px 8px' }}>Sent</th>
+                <th style={{ padding: '12px 8px' }}>Outcome</th>
+                <th style={{ padding: '12px 8px' }}>Promise to pay</th>
+                <th style={{ padding: '12px 8px' }}>Called</th>
               </tr>
             </thead>
             <tbody>
               {recent.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--label-tertiary)' }}>No calls in range.</td></tr>
+                <tr><td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--label-tertiary)' }}>No calls in range.</td></tr>
               ) : (
                 recent.map((c, i) => (
                   <tr key={`${c.row.id}-${c.step}-${i}`} style={{ borderBottom: '1px solid var(--separator)' }}>
@@ -129,8 +133,9 @@ function VoiceDashboard({ calls }: { calls: CallItem[] }) {
                     <td style={{ padding: '12px 8px' }}>{c.row.phone ?? '—'}</td>
                     <td style={{ padding: '12px 8px' }}><span className="badge badge-blue">Call {c.step}</span></td>
                     <td style={{ padding: '12px 8px' }}>
-                      <span className={`badge ${hasReply(c) ? 'badge-green' : 'badge-orange'}`}>{c.status ?? (hasReply(c) ? 'Replied' : 'Awaiting')}</span>
+                      <span className={`badge ${hasReply(c) ? 'badge-green' : 'badge-orange'}`}>{callStatusLabel(c.status)}{c.duration ? ` · ${c.duration}` : ''}</span>
                     </td>
+                    <td style={{ padding: '12px 8px', fontWeight: 600 }}>{c.promiseDate ?? '—'}</td>
                     <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-tertiary)' }}>{c.sentAt ?? '—'}</td>
                   </tr>
                 ))
@@ -161,7 +166,7 @@ function VoiceLogs({ calls }: { calls: CallItem[] }) {
   const active = filtered.find((c) => keyOf(c) === selectedKey) ?? filtered[0] ?? null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 340px) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
       <div className="liquid-card" style={{ padding: '16px' }}>
         <div style={{ position: 'relative', marginBottom: '12px' }}>
           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--label-tertiary)' }} />
@@ -192,8 +197,11 @@ function VoiceLogs({ calls }: { calls: CallItem[] }) {
                   {c.row.party_name ?? '—'}
                   <span className="badge badge-blue" style={{ flexShrink: 0 }}>Call {c.step}</span>
                 </span>
-                <span style={{ fontSize: '11px', color: 'var(--label-tertiary)' }}>{c.row.phone ?? ''}</span>
-                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{c.sentAt ?? '—'}</span>
+                <span style={{ fontSize: '11px', color: 'var(--label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.note ?? ''}</span>
+                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
+                  <span>{shortDate(c.sentAtDate)}</span>
+                  <span style={{ color: hasReply(c) ? 'var(--green)' : 'var(--orange)', fontWeight: 600 }}>{callStatusLabel(c.status)}{c.duration ? ` · ${c.duration}` : ''}</span>
+                </span>
               </button>
             ))
           )}
@@ -207,53 +215,25 @@ function VoiceLogs({ calls }: { calls: CallItem[] }) {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', gap: '8px', flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>{active.row.party_name ?? '—'} · Call {active.step}</h3>
-              <span style={{ fontSize: '11.5px', color: 'var(--label-tertiary)' }}>{active.sentAt ?? '—'}</span>
+              <ActivityLink party={active.row.party_name} />
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--label-tertiary)', marginBottom: '14px' }}>
-              {active.row.phone ?? '—'} · Bill {active.row.bill_no ?? '—'} · Final Amount{' '}
-              {formatINR(outreachOwedAmount(active.row))}
+              {active.row.phone ?? '—'} · Bill {active.row.bill_no ?? '—'} · Outstanding {formatINR(outreachOwedAmount(active.row))}
             </div>
-
-            {active.recordingUrl && (
-              <div style={{ marginBottom: '16px' }}>
-                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Call Recording</span>
-                <audio controls src={active.recordingUrl} style={{ width: '100%', marginTop: '6px', height: '36px' }} />
-              </div>
-            )}
-
-            {active.note && (
-              <div style={{ marginBottom: '16px' }}>
-                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Note</span>
-                <p style={{ fontSize: '12.5px', background: 'var(--fill-quaternary)', padding: '12px 14px', borderRadius: '10px', color: 'var(--label-primary)', lineHeight: '1.5', marginTop: '6px', whiteSpace: 'pre-wrap' }}>
-                  {active.note}
-                </p>
-              </div>
-            )}
-
-            {active.sentiment && (
-              <div style={{ marginBottom: '16px' }}>
-                <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Sentiment</span>
-                <div style={{ marginTop: '6px' }}>
-                  <span
-                    className={`badge ${
-                      active.sentiment.toLowerCase().startsWith('pos')
-                        ? 'badge-green'
-                        : active.sentiment.toLowerCase().startsWith('neg')
-                        ? 'badge-red'
-                        : 'badge-orange'
-                    }`}
-                  >
-                    {active.sentiment}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: 600 }}>Call Script</span>
-              <pre style={{ whiteSpace: 'pre-wrap', fontSize: '12.5px', fontFamily: 'var(--font-mono)', background: 'var(--fill-quaternary)', padding: '14px', borderRadius: '10px', color: 'var(--label-primary)', lineHeight: '1.5', marginTop: '6px' }}>
-                {active.content}
-              </pre>
+            <div style={{ maxHeight: '640px', overflowY: 'auto', paddingRight: '4px' }}>
+              <CallTranscriptView
+                call={{
+                  step: active.step,
+                  status: active.status,
+                  sentAt: active.sentAt,
+                  sentiment: active.sentiment,
+                  note: active.note,
+                  content: active.content,
+                  duration: active.duration,
+                  promiseDate: active.promiseDate,
+                  recordingUrl: active.recordingUrl,
+                }}
+              />
             </div>
           </>
         )}

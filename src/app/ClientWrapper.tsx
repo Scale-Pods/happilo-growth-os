@@ -258,7 +258,10 @@ const WORKSPACES: Workspace[] = [
       },
       {
         label: 'Invoices',
-        items: [{ href: '/accounts-receivable/upload-invoice', label: 'Upload Invoice', icon: UploadCloud }],
+        items: [
+          { href: '/accounts-receivable/upload-invoice', label: 'Upload Invoice', icon: UploadCloud },
+          { href: '/accounts-receivable/activity', label: 'Party Activity', icon: Activity },
+        ],
       },
       {
         label: 'Channels',
@@ -704,6 +707,7 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     { text: 'Go to B2B CRM: Voice Analytics', type: 'navigation', target: '/b2b-crm/voice/analytics', shortcut: '' },
     { text: 'Go to Receivables: Dashboard', type: 'navigation', target: '/accounts-receivable/dashboard', shortcut: '⌘6' },
     { text: 'Go to Receivables: Upload Invoice', type: 'navigation', target: '/accounts-receivable/upload-invoice', shortcut: '' },
+    { text: 'Go to Receivables: Party Activity', type: 'navigation', target: '/accounts-receivable/activity', shortcut: '' },
     { text: 'Go to Receivables: WhatsApp Dashboard', type: 'navigation', target: '/accounts-receivable/whatsapp/dashboard', shortcut: '' },
     { text: 'Go to Receivables: WhatsApp Chats', type: 'navigation', target: '/accounts-receivable/whatsapp/chats', shortcut: '' },
     { text: 'Go to Receivables: WhatsApp Leads', type: 'navigation', target: '/accounts-receivable/whatsapp/leads', shortcut: '' },

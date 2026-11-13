@@ -24,6 +24,7 @@ import {
   type RecoveryOutreachRow,
   type ConversationEntry,
 } from '@/lib/data/receivables';
+import { WaChatView, ActivityLink, shortDate } from '../_components/Conversations';
 
 type WaView = 'dashboard' | 'chats' | 'leads' | 'analytics';
 
@@ -191,7 +192,7 @@ function WaChats({ threads }: { threads: WaThread[] }) {
   const active = filtered.find((t) => t.row.id === selectedId) ?? filtered[0] ?? null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '24px', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 320px) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
       <div className="liquid-card" style={{ padding: '16px' }}>
         <div style={{ position: 'relative', marginBottom: '12px' }}>
           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--label-tertiary)' }} />
@@ -220,10 +221,14 @@ function WaChats({ threads }: { threads: WaThread[] }) {
                     background: active?.row.id === t.row.id ? 'var(--fill-tertiary)' : 'transparent',
                   }}
                 >
-                  <span style={{ fontSize: '13px', fontWeight: '700' }}>{t.row.party_name ?? '—'}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {last ? `${isInbound(last) ? '← ' : '→ '}${last.message.replace(/\s+/g, ' ').slice(0, 54)}` : ''}
+                  <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.row.party_name ?? '—'}</span>
+                    <span style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--label-tertiary)', flexShrink: 0 }}>{last ? shortDate(last._at).split(',')[0] : ''}</span>
                   </span>
+                  <span style={{ fontSize: '11px', color: 'var(--label-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {last ? `${isInbound(last) ? '' : 'You: '}${last.message.replace(/\s+/g, ' ').slice(0, 60)}` : ''}
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{t.entries.length} messages</span>
                 </button>
               );
             })
@@ -244,48 +249,29 @@ function WaChats({ threads }: { threads: WaThread[] }) {
                   {formatINR(outreachOwedAmount(active.row))}
                 </span>
               </div>
-              {active.row.current_stage && <span className="badge badge-blue">{active.row.current_stage}</span>}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {active.row.current_stage && <span className="badge badge-blue">{active.row.current_stage}</span>}
+                <ActivityLink party={active.row.party_name} />
+              </div>
             </div>
 
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                padding: '20px',
-                maxHeight: '560px',
+                padding: '16px 20px',
+                maxHeight: '600px',
                 overflowY: 'auto',
                 background: 'var(--fill-quaternary)',
               }}
             >
-              {active.entries.map((entry, idx) => {
-                const inbound = isInbound(entry);
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      alignSelf: inbound ? 'flex-start' : 'flex-end',
-                      maxWidth: '78%',
-                      background: inbound ? 'var(--bg-layer1, #fff)' : 'rgba(52, 138, 92, 0.16)',
-                      border: '1px solid var(--separator)',
-                      padding: '9px 13px',
-                      borderRadius: inbound ? '2px 12px 12px 12px' : '12px 2px 12px 12px',
-                    }}
-                  >
-                    {entry.stage && (
-                      <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', fontWeight: 600, display: 'block', marginBottom: '3px' }}>
-                        {entry.stage}
-                      </span>
-                    )}
-                    <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--label-primary)' }}>{entry.message}</p>
-                    <span style={{ fontSize: '10px', color: 'var(--label-tertiary)', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      {entry.timestamp ?? ''}
-                      {!inbound && <CheckCheck size={12} style={{ color: 'var(--blue)' }} />}
-                    </span>
-                  </div>
-                );
-              })}
+              <WaChatView entries={active.entries} partyLabel={active.row.party_name ?? 'Customer'} />
             </div>
+            {active.row.summary && (
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--separator)', fontSize: '12px', color: 'var(--label-secondary)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--label-primary)' }}>Where it stands: </strong>
+                {active.row.summary}
+                {active.row.next_action && <span style={{ display: 'block', marginTop: '4px' }}><strong style={{ color: 'var(--label-primary)' }}>Next: </strong>{active.row.next_action}{active.row.next_action_date ? ` (by ${active.row.next_action_date})` : ''}</span>}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -380,7 +366,8 @@ function WaLeads({ threads }: { threads: WaThread[] }) {
                     <tr key={t.row.id} style={{ borderBottom: '1px solid var(--separator)' }}>
                       <td style={{ padding: '12px 8px' }}>
                         <span style={{ fontWeight: '700', display: 'block' }}>{t.row.party_name ?? '—'}</span>
-                        {t.row.gstin && <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>GSTIN: {t.row.gstin}</span>}
+                        {t.row.gstin && <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', display: 'block' }}>GSTIN: {t.row.gstin}</span>}
+                        <ActivityLink party={t.row.party_name} compact />
                       </td>
                       <td style={{ padding: '12px 8px' }}>
                         <span style={{ display: 'block' }}>{t.row.phone ?? '—'}</span>

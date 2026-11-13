@@ -57,6 +57,10 @@ export interface CallStepFields {
   sentiment: string | null;
   note: string | null;
   recording_url: string | null;
+  /** Call length as "mm:ss" (connected calls only). */
+  duration: string | null;
+  /** Date the party promised to pay on this call, dd/mm/yyyy. */
+  promise_date: string | null;
 }
 
 /** One recovery follow-up cycle for a party. */
@@ -119,6 +123,15 @@ export interface RecoveryOutreachRow {
   call_7_date: string | null; call_7_content: string | null; call_7_status: string | null; call_7_sent_at: string | null; call_7_sentiment: string | null; call_7_note: string | null; call_7_recording_url: string | null;
   call_8_date: string | null; call_8_content: string | null; call_8_status: string | null; call_8_sent_at: string | null; call_8_sentiment: string | null; call_8_note: string | null; call_8_recording_url: string | null;
 
+  call_1_duration?: string | null; call_1_promise_date?: string | null;
+  call_2_duration?: string | null; call_2_promise_date?: string | null;
+  call_3_duration?: string | null; call_3_promise_date?: string | null;
+  call_4_duration?: string | null; call_4_promise_date?: string | null;
+  call_5_duration?: string | null; call_5_promise_date?: string | null;
+  call_6_duration?: string | null; call_6_promise_date?: string | null;
+  call_7_duration?: string | null; call_7_promise_date?: string | null;
+  call_8_duration?: string | null; call_8_promise_date?: string | null;
+
   /** Full chat thread, same JSON-array-of-ConversationEntry shape as before — still the source for the Chats bubble view. */
   email_conversation: ConversationEntry[] | string | null;
   wa_conversation: ConversationEntry[] | string | null;
@@ -155,6 +168,8 @@ export function callStep(row: RecoveryOutreachRow, n: 1 | 2 | 3 | 4 | 5 | 6 | 7 
     sentiment: r[`${p}sentiment`] ?? null,
     note: r[`${p}note`] ?? null,
     recording_url: r[`${p}recording_url`] ?? null,
+    duration: r[`${p}duration`] ?? null,
+    promise_date: r[`${p}promise_date`] ?? null,
   };
 }
 
@@ -165,6 +180,14 @@ export interface ConversationEntry {
   channel?: string; // "email" | "whatsapp"
   message: string;
   timestamp?: string; // "08/09/2026 00:08"
+  /** Email only. */
+  subject?: string;
+  from?: string;
+  to?: string;
+  cc?: string;
+  attachments?: string[];
+  /** WhatsApp only: delivery state of an outgoing message. */
+  delivery?: 'sent' | 'delivered' | 'read';
 }
 
 /**

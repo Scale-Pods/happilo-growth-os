@@ -2,9 +2,11 @@
 
 import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../../ClientWrapper';
-import type { Lead } from '@/lib/data/b2bCrm';
-import { STAGE_ORDER, stageLabel, categoryLabel, sourceLabel, intentLabel, interestLabel, parseSentiment, formatWhen } from '@/lib/data/b2bCrm';
-import { Search, MapPin, IndianRupee, Users, RefreshCw, TrendingUp, X, Star, CheckCircle2, XCircle } from 'lucide-react';
+import type { Lead, OutreachSequence, TranscriptEntry } from '@/lib/data/b2bCrm';
+import { STAGE_ORDER, stageLabel, categoryLabel, sourceLabel, formatWhen } from '@/lib/data/b2bCrm';
+import type { VapiCallLog } from '@/lib/data/vapiCalls';
+import { Search, MapPin, IndianRupee, Users, RefreshCw, TrendingUp, MessageSquare, Mail, Phone } from 'lucide-react';
+import LeadDrawer, { type ScheduledLocal } from './LeadDrawer';
 import { isWithinDateRange } from '@/lib/dateRangeFilter';
 
 const STAGES = STAGE_ORDER as readonly string[];
@@ -20,17 +22,51 @@ const STAGE_BADGE: Record<string, string> = {
   lost: 'badge-red',
 };
 
-/** "positive - wants_pricing - note" becomes a readable one-liner. */
-function sentimentText(raw: string | null): string | null {
-  if (!raw) return null;
-  const p = parseSentiment(raw);
-  const head = [interestLabel(p.interest), intentLabel(p.intent)].filter(Boolean).join(' · ');
-  return p.summary ? `${head}. ${p.summary}` : head;
-}
-
-export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
+export default function LeadsTable({
+  initialLeads,
+  calls = [],
+  sequences = [],
+}: {
+  initialLeads: Lead[];
+  calls?: VapiCallLog[];
+  sequences?: OutreachSequence[];
+}) {
   const { dateRange, showToast } = useAppContext();
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [localSteps, setLocalSteps] = useState<ScheduledLocal[]>([]);
+
+  const callsByLead = useMemo(() => {
+    const m = new Map<string, VapiCallLog[]>();
+    for (const c of calls) {
+      if (!c.master_leads_id) continue;
+      const arr = m.get(c.master_leads_id) ?? [];
+      arr.push(c);
+      m.set(c.master_leads_id, arr);
+    }
+    return m;
+  }, [calls]);
+
+  const seqByLead = useMemo(() => {
+    const m = new Map<string, OutreachSequence[]>();
+    const all: OutreachSequence[] = [
+      ...sequences,
+      ...localSteps.map((l) => ({
+        id: l.id, lead_id: l.lead_id, outreach_step: 'follow_up', channel: l.channel, scheduled_date: l.at, status: 'scheduled',
+        executed_at: null, n8n_execution_id: null, created_at: l.at, label: l.label, skip_reason: null,
+      })),
+    ];
+    for (const s of all) {
+      const arr = m.get(s.lead_id) ?? [];
+      arr.push(s);
+      m.set(s.lead_id, arr);
+    }
+    return m;
+  }, [sequences, localSteps]);
+
+  const patchLead = (id: string, fn: (l: Lead) => Lead) => {
+    setLeads((prev) => prev.map((l) => (l.id === id ? fn(l) : l)));
+    setSelectedLead((prev) => (prev && prev.id === id ? fn(prev) : prev));
+  };
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
@@ -75,8 +111,15 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Failed to update stage');
       const { lead: updated } = await res.json();
-      setLeads((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
-      setSelectedLead((prev) => (prev && prev.id === updated.id ? { ...prev, ...updated } : prev));
+      // Keep messages and notes added in this session; take stage and timeline from the server.
+      const merge = (l: Lead): Lead => ({
+        ...l,
+        current_stage: updated.current_stage,
+        is_active: updated.is_active,
+        updated_at: updated.updated_at,
+        system_events: updated.system_events ?? l.system_events,
+      });
+      patchLead(updated.id, merge);
       showToast(`${updated.company_name} marked as ${stage === 'won' ? 'won' : 'lost'}.`, 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not update this lead. Please try again.', 'error');
@@ -91,7 +134,7 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--label-primary)', margin: 0 }}>B2B Leads</h2>
           <p style={{ fontSize: '13px', color: 'var(--label-secondary)', marginTop: '4px', marginBottom: 0 }}>
-            Bulk, gifting, retail and distributor leads across cities. Click a row to see details.
+            Bulk, gifting, retail and distributor leads across cities. Click a row to open the full history: WhatsApp, email, calls and notes.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -168,13 +211,15 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
                 <th style={{ padding: '12px 8px' }}>Contact</th>
                 <th style={{ padding: '12px 8px' }}>Source</th>
                 <th style={{ padding: '12px 8px' }}>Stage</th>
+                <th style={{ padding: '12px 8px' }}>Touches</th>
                 <th style={{ padding: '12px 8px' }}>Last reply</th>
+                <th style={{ padding: '12px 8px' }}>Next step</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--label-tertiary)' }}>
+                  <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: 'var(--label-tertiary)' }}>
                     No leads match this filter.
                   </td>
                 </tr>
@@ -183,6 +228,10 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
                   const lastReply = [s.whatsapp_last_reply_at, s.email_last_reply_at, s.last_reply_at]
                     .filter(Boolean)
                     .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0];
+                  const nCalls = callsByLead.get(s.id)?.length ?? 0;
+                  const next = (seqByLead.get(s.id) ?? [])
+                    .filter((q) => q.status === 'scheduled')
+                    .sort((a, b) => (a.scheduled_date < b.scheduled_date ? -1 : 1))[0];
                   return (
                     <tr
                       key={s.id}
@@ -204,8 +253,21 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
                       <td style={{ padding: '12px 8px' }}>
                         <span className={`badge ${STAGE_BADGE[s.current_stage] ?? 'badge-blue'}`}>{stageLabel(s.current_stage)}</span>
                       </td>
+                      <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-secondary)', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginRight: '8px' }} title="WhatsApp messages"><MessageSquare size={11} /> {s.conversation_transcript.length}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginRight: '8px' }} title="Emails"><Mail size={11} /> {s.conversation_transcript_email.length}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Calls"><Phone size={11} /> {nCalls}</span>
+                      </td>
                       <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-tertiary)' }}>
                         {lastReply ? formatWhen(lastReply) : 'No reply yet'}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontSize: '11.5px', color: 'var(--label-secondary)', maxWidth: '220px' }}>
+                        {next ? (
+                          <>
+                            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{next.label ?? 'Follow-up'}</span>
+                            <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{formatWhen(next.scheduled_date)}</span>
+                          </>
+                        ) : '—'}
                       </td>
                     </tr>
                   );
@@ -217,116 +279,24 @@ export default function LeadsTable({ initialLeads }: { initialLeads: Lead[] }) {
       </div>
 
       {selectedLead && (
-        <div
-          className="spotlight-overlay"
-          style={{ display: 'flex' }}
-          onClick={() => setSelectedLead(null)}
-        >
-          <div className="spotlight-panel" style={{ maxWidth: '620px', width: '100%' }} onClick={(e) => e.stopPropagation()}>
-            <div className="spotlight-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px' }}>
-              <div>
-                <span style={{ fontWeight: '700', fontSize: '17px', display: 'block' }}>{selectedLead.company_name}</span>
-                <span className={`badge ${STAGE_BADGE[selectedLead.current_stage] ?? 'badge-blue'}`} style={{ marginTop: '6px', display: 'inline-block' }}>
-                  {stageLabel(selectedLead.current_stage)}
-                </span>
-              </div>
-              <button className="btn-icon" onClick={() => setSelectedLead(null)}><X size={16} /></button>
-            </div>
-
-            <div style={{ padding: '20px', borderTop: '1px solid var(--separator)', borderBottom: '1px solid var(--separator)', maxHeight: '60vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '13px' }}>
-                <DetailField label="Type of business" value={categoryLabel(selectedLead.category)} />
-                <DetailField label="City" value={selectedLead.region} />
-                <DetailField label="Locality" value={selectedLead.city} />
-                <DetailField
-                  label="Google rating"
-                  value={selectedLead.google_rating ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Star size={12} style={{ color: 'var(--orange)' }} fill="var(--orange)" />
-                      {selectedLead.google_rating} ({selectedLead.google_reviews_count ?? 0} reviews)
-                    </span>
-                  ) : null}
-                />
-                <DetailField label="Address" value={selectedLead.address} full />
-                <DetailField label="Lead source" value={sourceLabel(selectedLead.lead_source)} />
-                <DetailField label="Phone" value={selectedLead.phone} />
-                <DetailField label="WhatsApp" value={selectedLead.whatsapp_number} />
-                <DetailField label="Email" value={selectedLead.email} />
-                <DetailField label="Added on" value={formatWhen(selectedLead.created_at)} />
-                <DetailField label="Notes" value={selectedLead.notes} full />
-                <DetailField
-                  label="WhatsApp conversation"
-                  value={sentimentText(selectedLead.whatsapp_sentiment)}
-                  full
-                  highlight={selectedLead.whatsapp_sentiment?.toLowerCase().startsWith('positive')}
-                />
-                <DetailField
-                  label="Email conversation"
-                  value={sentimentText(selectedLead.email_sentiment)}
-                  full
-                  highlight={selectedLead.email_sentiment?.toLowerCase().startsWith('positive')}
-                />
-                <DetailField
-                  label="Phone call"
-                  value={sentimentText(selectedLead.voice_sentiment)}
-                  full
-                  highlight={selectedLead.voice_sentiment?.toLowerCase().startsWith('positive')}
-                />
-              </div>
-            </div>
-
-            <div style={{ padding: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              {selectedLead.current_stage !== 'won' && selectedLead.current_stage !== 'lost' ? (
-                <>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => updateStage(selectedLead, 'lost')}
-                    disabled={updatingStage}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--red)' }}
-                  >
-                    <XCircle size={14} /> Mark as lost
-                  </button>
-                  <button
-                    className="btn-primary"
-                    onClick={() => updateStage(selectedLead, 'won')}
-                    disabled={updatingStage}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--green)' }}
-                  >
-                    <CheckCircle2 size={14} /> Mark as won
-                  </button>
-                </>
-              ) : (
-                <span style={{ fontSize: '12.5px', color: 'var(--label-tertiary)', fontStyle: 'italic' }}>
-                  This lead is already marked {stageLabel(selectedLead.current_stage).toLowerCase()}.
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <LeadDrawer
+          key={selectedLead.id}
+          lead={selectedLead}
+          calls={callsByLead.get(selectedLead.id) ?? []}
+          sequences={seqByLead.get(selectedLead.id) ?? []}
+          updating={updatingStage}
+          onClose={() => setSelectedLead(null)}
+          onStage={(stage) => updateStage(selectedLead, stage)}
+          onAppendWhatsapp={(entry: TranscriptEntry) =>
+            patchLead(selectedLead.id, (l) => ({ ...l, conversation_transcript: [...l.conversation_transcript, entry], updated_at: entry.at }))
+          }
+          onNotes={(notes) => patchLead(selectedLead.id, (l) => ({ ...l, notes }))}
+          onSchedule={(st) =>
+            setLocalSteps((prev) => [...prev, { ...st, id: `local-${Date.now()}`, lead_id: selectedLead.id }])
+          }
+          showToast={showToast}
+        />
       )}
-    </div>
-  );
-}
-
-function DetailField({
-  label,
-  value,
-  full = false,
-  highlight = false,
-}: {
-  label: string;
-  value: React.ReactNode;
-  full?: boolean;
-  highlight?: boolean;
-}) {
-  return (
-    <div style={{ gridColumn: full ? '1 / -1' : undefined }}>
-      <span style={{ fontSize: '10.5px', color: 'var(--label-tertiary)', textTransform: 'uppercase', fontWeight: '600', display: 'block', marginBottom: '2px', letterSpacing: '0.03em' }}>
-        {label}
-      </span>
-      <span style={{ color: highlight ? 'var(--green)' : 'var(--label-primary)', fontWeight: highlight ? 600 : 400 }}>
-        {value ?? <span style={{ color: 'var(--label-tertiary)', fontStyle: 'italic' }}>—</span>}
-      </span>
     </div>
   );
 }

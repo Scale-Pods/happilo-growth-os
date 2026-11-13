@@ -1,4 +1,4 @@
-import { MessageSquare, Mail, MapPin, Building2, ArrowDownLeft, ArrowUpRight, Sparkles } from 'lucide-react';
+import { MessageSquare, Mail, MapPin, Building2, ArrowDownLeft, ArrowUpRight, Sparkles, Paperclip, FileText, Check, CheckCheck } from 'lucide-react';
 import type { Lead, TranscriptEntry } from '@/lib/data/b2bCrm';
 import { parseSentiment, categoryLabel, interestLabel, intentLabel, formatWhen } from '@/lib/data/b2bCrm';
 import { ShareShell } from './ShareShell';
@@ -140,9 +140,18 @@ export default function SharedChatCard({
                     borderRadius: inbound ? '3px 14px 14px 14px' : '14px 3px 14px 14px',
                   }}
                 >
+                  {entry.attachment && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'rgba(0,82,59,0.06)', border: '1px solid rgba(60,60,67,0.12)', borderRadius: '8px', padding: '6px 9px', marginBottom: '6px' }}>
+                      <FileText size={15} style={{ color: '#00523B', flexShrink: 0 }} />
+                      <span style={{ fontSize: '12px', fontWeight: 600 }}>{entry.attachment.replace(/^\[[^\]]+\]\s*/, '') || entry.attachment}</span>
+                    </div>
+                  )}
                   <p style={{ fontSize: '13.5px', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{entry.message}</p>
-                  <span style={{ fontSize: '10px', color: FAINT, display: 'block', marginTop: '5px', textAlign: 'right' }}>
+                  <span style={{ fontSize: '10px', color: FAINT, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', marginTop: '5px' }}>
                     {formatWhen(entry.at)}
+                    {!inbound && entry.status === 'read' && <CheckCheck size={12} style={{ color: '#34B7F1' }} />}
+                    {!inbound && entry.status === 'delivered' && <CheckCheck size={12} />}
+                    {!inbound && entry.status === 'sent' && <Check size={12} />}
                   </span>
                 </div>
               ) : (
@@ -156,15 +165,34 @@ export default function SharedChatCard({
                     borderLeft: `3px solid ${inbound ? '#F2A71B' : '#00523B'}`,
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '10.5px', color: MUTED, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      {inbound ? `From ${lead.company_name}` : 'From Happilo'}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700 }}>
+                      {entry.from ?? (inbound ? lead.company_name : 'Happilo B2B Team')}
                     </span>
-                    <span style={{ fontSize: '10.5px', color: FAINT }}>{formatWhen(entry.at)}</span>
+                    <span style={{ fontSize: '10.5px', color: FAINT, flexShrink: 0 }}>{formatWhen(entry.at)}</span>
+                  </div>
+                  {entry.subject && <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{entry.subject}</div>}
+                  <div style={{ fontSize: '11px', color: MUTED, lineHeight: 1.6, borderBottom: '1px solid rgba(60,60,67,0.1)', paddingBottom: '8px', marginBottom: '10px' }}>
+                    {entry.to && <div>To: {entry.to}</div>}
+                    {entry.cc && <div>Cc: {entry.cc}</div>}
                   </div>
                   <p style={{ fontSize: '13.5px', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: 'rgba(0,0,0,0.82)' }}>
-                    {entry.message}
+                    {entry.message.split('\n').map((line, i) => (
+                      <span key={i} style={/^\s{2}\S/.test(line) && /\s{3,}/.test(line.trim()) ? { fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '12px' } : undefined}>
+                        {line}
+                        {'\n'}
+                      </span>
+                    ))}
                   </p>
+                  {entry.attachments && entry.attachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                      {entry.attachments.map((a) => (
+                        <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', border: '1px solid rgba(60,60,67,0.15)', borderRadius: '8px', padding: '4px 8px', background: '#F6F8F6' }}>
+                          <Paperclip size={11} style={{ color: '#00523B' }} /> {a}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

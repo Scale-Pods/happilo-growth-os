@@ -11,7 +11,7 @@ import {
 } from '@/lib/mock/inventory-utils';
 import { adjustStock } from './actions';
 import {
-  Card, Drawer, Modal, Field, Th, ProductCell, Thumb, Toolbar, Empty, MiniBars, BarRow, TabProps, downloadCsv, BRAND, BRAND_MID,
+  Card, Drawer, Modal, Field, Th, ProductCell, Thumb, Toolbar, Empty, MiniBars, BarRow, TabProps, downloadCsv, BRAND, BRAND_MID, ChannelName,
 } from './shared';
 
 type SortKey = 'name' | 'total' | 'warehouse' | 'cover' | 'value' | 'sales';
