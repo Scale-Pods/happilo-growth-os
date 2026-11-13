@@ -142,307 +142,139 @@ export const useAppContext = () => {
 
 
 // -------------------------------------------------------
-// Workspace definitions — the sidebar dropdown switches
-// between these, each with its own nav item list.
+// Sidebar navigation — every module and page is listed
+// directly, grouped by area. Modules with many pages
+// (B2B CRM, Receivables) are collapsible groups, and
+// channels (WhatsApp / Email / Voice) show their own
+// pages when you are inside them.
 // -------------------------------------------------------
-interface WorkspaceNavItem {
+type NavIcon = React.ComponentType<{ size?: number }>;
+
+interface NavLeaf {
   href: string;
   label: string;
-  icon: React.ComponentType<{ size?: number }>;
 }
 
-interface WorkspaceSection {
+interface NavLink {
+  href: string;
   label: string;
-  items: WorkspaceNavItem[];
+  icon: NavIcon;
+  /** Path prefix that marks this link (and its children) as active. */
+  match?: string;
+  children?: NavLeaf[];
 }
 
-interface Workspace {
+interface NavModule {
   id: string;
-  name: string;
-  tagline: string;
-  icon: React.ComponentType<{ size?: number }>;
-  homePath: string;
-  sections: WorkspaceSection[];
+  label: string;
+  icon: NavIcon;
+  prefix: string[];
+  links: NavLink[];
 }
 
-const WORKSPACES: Workspace[] = [
+interface NavArea {
+  label: string;
+  links?: NavLink[];
+  modules?: NavModule[];
+}
+
+const channelPages = (base: string, pages: [string, string][]): NavLeaf[] =>
+  pages.map(([slug, label]) => ({ href: `${base}/${slug}`, label }));
+
+const NAV: NavArea[] = [
   {
-    id: 'master',
-    name: 'Master Dashboard',
-    tagline: 'All Happilo channels combined',
-    icon: LayoutDashboard,
-    homePath: '/master',
-    sections: [
-      { label: 'Overview', items: [{ href: '/master', label: 'Master Dashboard', icon: LayoutDashboard }] },
+    label: 'Overview',
+    links: [
+      { href: '/master', label: 'Master Dashboard', icon: LayoutDashboard },
+      { href: '/dashboard', label: 'Executive Board', icon: BarChart3 },
     ],
   },
   {
-    id: 'executive',
-    name: 'Executive Board',
-    tagline: 'Founder command center',
-    icon: LayoutDashboard,
-    homePath: '/dashboard',
-    sections: [
-      { label: 'Founder Core', items: [{ href: '/dashboard', label: 'Executive Board', icon: LayoutDashboard }] },
+    label: 'Operations',
+    links: [
+      { href: '/inventory', label: 'Inventory', icon: Package },
+      { href: '/customer-care', label: 'Customer Care', icon: Bot },
     ],
   },
   {
-    id: 'inventory',
-    name: 'Inventory Intel',
-    tagline: 'Stock, forecasting & imports',
-    icon: Package,
-    homePath: '/inventory',
-    sections: [
-      { label: 'Operations', items: [{ href: '/inventory', label: 'Inventory Intel', icon: Package }] },
-    ],
+    label: 'Marketing',
+    links: [{ href: '/marketing', label: 'Content OS', icon: Sparkles }],
   },
   {
-    id: 'customer-care',
-    name: 'Customer Care',
-    tagline: 'Support & consumer reviews',
-    icon: Bot,
-    homePath: '/customer-care',
-    sections: [
-      { label: 'Operations', items: [{ href: '/customer-care', label: 'Customer Care', icon: Bot }] },
-    ],
-  },
-  {
-    id: 'content-os',
-    name: 'Content OS',
-    tagline: 'Campaigns & content engine',
-    icon: Sparkles,
-    homePath: '/marketing',
-    sections: [
-      { label: 'Marketing', items: [{ href: '/marketing', label: 'Content OS', icon: Sparkles }] },
-    ],
-  },
-  {
-    id: 'b2b-crm',
-    name: 'B2B CRM',
-    tagline: 'Bulk, gifting & distributor leads',
-    icon: Users,
-    homePath: '/b2b-crm/dashboard',
-    sections: [
+    label: 'Sales & Finance',
+    modules: [
       {
-        label: 'Lead Generation',
-        items: [{ href: '/b2b-crm/scraper', label: 'B2B Lead Finder', icon: MapPin }],
-      },
-      {
-        label: 'Pipeline',
-        items: [{ href: '/b2b-crm/leads', label: 'Leads', icon: Users }],
-      },
-      {
-        label: 'Channels',
-        items: [
-          { href: '/b2b-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-          { href: '/b2b-crm/email/dashboard', label: 'Email', icon: Mail },
-          { href: '/b2b-crm/voice/dashboard', label: 'Voice', icon: Phone },
+        id: 'b2b',
+        label: 'B2B CRM',
+        icon: Users,
+        prefix: ['/b2b-crm', '/b2b-sales'],
+        links: [
+          { href: '/b2b-crm/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/b2b-crm/leads', label: 'Leads', icon: UserCheck },
+          { href: '/b2b-crm/scraper', label: 'Lead Finder', icon: MapPin },
+          {
+            href: '/b2b-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare, match: '/b2b-crm/whatsapp',
+            children: channelPages('/b2b-crm/whatsapp', [['dashboard', 'Overview'], ['chats', 'Chats'], ['leads', 'Leads'], ['analytics', 'Analytics']]),
+          },
+          {
+            href: '/b2b-crm/email/dashboard', label: 'Email', icon: Mail, match: '/b2b-crm/email',
+            children: channelPages('/b2b-crm/email', [['dashboard', 'Overview'], ['inbox', 'Inbox'], ['analytics', 'Analytics']]),
+          },
+          {
+            href: '/b2b-crm/voice/dashboard', label: 'Voice', icon: Phone, match: '/b2b-crm/voice',
+            children: channelPages('/b2b-crm/voice', [['dashboard', 'Overview'], ['logs', 'Call Logs'], ['analytics', 'Analytics']]),
+          },
         ],
       },
       {
-        label: 'Insights',
-        items: [{ href: '/b2b-crm/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
-      },
-    ],
-  },
-  {
-    id: 'receivables',
-    name: 'Receivables Recovery',
-    tagline: 'Distributor dues & collections',
-    icon: DollarSign,
-    homePath: '/accounts-receivable/dashboard',
-    sections: [
-      {
-        label: 'Overview',
-        items: [{ href: '/accounts-receivable/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
-      },
-      {
-        label: 'Invoices',
-        items: [
-          { href: '/accounts-receivable/upload-invoice', label: 'Upload Invoice', icon: UploadCloud },
+        id: 'receivables',
+        label: 'Receivables',
+        icon: DollarSign,
+        prefix: ['/accounts-receivable'],
+        links: [
+          { href: '/accounts-receivable/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/accounts-receivable/upload-invoice', label: 'Invoices & Ledger', icon: UploadCloud },
           { href: '/accounts-receivable/activity', label: 'Party Activity', icon: Activity },
+          {
+            href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare, match: '/accounts-receivable/whatsapp',
+            children: channelPages('/accounts-receivable/whatsapp', [['dashboard', 'Overview'], ['chats', 'Chats'], ['leads', 'Accounts'], ['analytics', 'Analytics']]),
+          },
+          {
+            href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail, match: '/accounts-receivable/email',
+            children: channelPages('/accounts-receivable/email', [['dashboard', 'Overview'], ['sent', 'Sent'], ['received', 'Received'], ['analytics', 'Analytics']]),
+          },
+          {
+            href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone, match: '/accounts-receivable/voice',
+            children: channelPages('/accounts-receivable/voice', [['dashboard', 'Overview'], ['logs', 'Call Logs'], ['analytics', 'Analytics']]),
+          },
         ],
       },
-      {
-        label: 'Channels',
-        items: [
-          { href: '/accounts-receivable/whatsapp', label: 'WhatsApp', icon: MessageSquare },
-          { href: '/accounts-receivable/email', label: 'Email', icon: Mail },
-          { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
-        ],
-      },
     ],
   },
 ];
 
-// Channel sub-navs for Receivables — the sidebar swaps to these while the
-// user is inside /accounts-receivable/email/*, /accounts-receivable/whatsapp/*,
-// or /accounts-receivable/voice/*.
-const RECEIVABLES_EMAIL_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'Email',
-    items: [
-      { href: '/accounts-receivable/email/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/accounts-receivable/email/sent', label: 'Sent', icon: Send },
-      { href: '/accounts-receivable/email/received', label: 'Received', icon: Inbox },
-      { href: '/accounts-receivable/email/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'Receivables',
-    items: [
-      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-      { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
-    ],
-  },
-];
+const pathIn = (pathname: string | null, prefix: string) =>
+  !!pathname && (pathname === prefix || pathname.startsWith(prefix + '/'));
 
-const RECEIVABLES_WHATSAPP_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'WhatsApp',
-    items: [
-      { href: '/accounts-receivable/whatsapp/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/accounts-receivable/whatsapp/chats', label: 'Chats', icon: MessageSquare },
-      { href: '/accounts-receivable/whatsapp/leads', label: 'Leads', icon: Users },
-      { href: '/accounts-receivable/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'Receivables',
-    items: [
-      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail },
-      { href: '/accounts-receivable/voice/dashboard', label: 'Voice', icon: Phone },
-    ],
-  },
-];
-
-const RECEIVABLES_VOICE_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'Voice',
-    items: [
-      { href: '/accounts-receivable/voice/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/accounts-receivable/voice/logs', label: 'Call Logs', icon: Phone },
-      { href: '/accounts-receivable/voice/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'Receivables',
-    items: [
-      { href: '/accounts-receivable/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/accounts-receivable/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-      { href: '/accounts-receivable/email/dashboard', label: 'Email', icon: Mail },
-    ],
-  },
-];
-
-// Channel sub-navs for B2B CRM — swapped in while inside
-// /b2b-crm/email/* or /b2b-crm/whatsapp/*.
-const B2B_CRM_EMAIL_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'Email',
-    items: [
-      { href: '/b2b-crm/email/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/b2b-crm/email/inbox', label: 'Inbox', icon: Inbox },
-      { href: '/b2b-crm/email/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'B2B CRM',
-    items: [
-      { href: '/b2b-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/b2b-crm/leads', label: 'Leads', icon: Users },
-      { href: '/b2b-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-      { href: '/b2b-crm/voice/dashboard', label: 'Voice', icon: Phone },
-    ],
-  },
-];
-
-const B2B_CRM_WHATSAPP_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'WhatsApp',
-    items: [
-      { href: '/b2b-crm/whatsapp/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/b2b-crm/whatsapp/chats', label: 'Chats', icon: MessageSquare },
-      { href: '/b2b-crm/whatsapp/leads', label: 'Leads', icon: Users },
-      { href: '/b2b-crm/whatsapp/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'B2B CRM',
-    items: [
-      { href: '/b2b-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/b2b-crm/leads', label: 'Leads', icon: Users },
-      { href: '/b2b-crm/email/dashboard', label: 'Email', icon: Mail },
-      { href: '/b2b-crm/voice/dashboard', label: 'Voice', icon: Phone },
-    ],
-  },
-];
-
-const B2B_CRM_VOICE_SECTIONS: WorkspaceSection[] = [
-  {
-    label: 'Voice',
-    items: [
-      { href: '/b2b-crm/voice/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/b2b-crm/voice/logs', label: 'Call Logs', icon: Phone },
-      { href: '/b2b-crm/voice/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'B2B CRM',
-    items: [
-      { href: '/b2b-crm/dashboard', label: 'Back to Dashboard', icon: ChevronLeft },
-      { href: '/b2b-crm/leads', label: 'Leads', icon: Users },
-      { href: '/b2b-crm/whatsapp/dashboard', label: 'WhatsApp', icon: MessageSquare },
-      { href: '/b2b-crm/email/dashboard', label: 'Email', icon: Mail },
-    ],
-  },
-];
-
-/** Returns the workspace for a path, with channel sub-navs swapped in. */
-function resolveWorkspace(pathname: string | null): Workspace {
-  const base = workspaceForPath(pathname);
-  if (!pathname) return base;
-  if (base.id === 'receivables') {
-    if (pathname.startsWith('/accounts-receivable/email')) {
-      return { ...base, sections: RECEIVABLES_EMAIL_SECTIONS };
+/** Breadcrumb trail for the header: [area/module, page, sub-page]. */
+function breadcrumbFor(pathname: string | null): string[] {
+  if (!pathname || pathname === '/') return ['Happilo Growth OS'];
+  for (const area of NAV) {
+    for (const link of area.links ?? []) {
+      if (pathIn(pathname, link.href)) return [area.label, link.label];
     }
-    if (pathname.startsWith('/accounts-receivable/whatsapp')) {
-      return { ...base, sections: RECEIVABLES_WHATSAPP_SECTIONS };
-    }
-    if (pathname.startsWith('/accounts-receivable/voice')) {
-      return { ...base, sections: RECEIVABLES_VOICE_SECTIONS };
+    for (const mod of area.modules ?? []) {
+      if (!mod.prefix.some((p) => pathIn(pathname, p))) continue;
+      for (const link of mod.links) {
+        const child = link.children?.find((c) => c.href === pathname);
+        if (child) return [mod.label, link.label, child.label];
+        if (pathIn(pathname, link.match ?? link.href)) return [mod.label, link.label];
+      }
+      return [mod.label];
     }
   }
-  if (base.id === 'b2b-crm') {
-    if (pathname.startsWith('/b2b-crm/email')) {
-      return { ...base, sections: B2B_CRM_EMAIL_SECTIONS };
-    }
-    if (pathname.startsWith('/b2b-crm/whatsapp')) {
-      return { ...base, sections: B2B_CRM_WHATSAPP_SECTIONS };
-    }
-    if (pathname.startsWith('/b2b-crm/voice')) {
-      return { ...base, sections: B2B_CRM_VOICE_SECTIONS };
-    }
-  }
-  return base;
-}
-
-function workspaceForPath(pathname: string | null): Workspace {
-  if (!pathname) return WORKSPACES[0];
-  if (pathname.startsWith('/b2b-crm') || pathname.startsWith('/b2b-sales')) {
-    return WORKSPACES.find((w) => w.id === 'b2b-crm')!;
-  }
-  if (pathname.startsWith('/accounts-receivable')) {
-    return WORKSPACES.find((w) => w.id === 'receivables')!;
-  }
-  if (pathname.startsWith('/inventory')) return WORKSPACES.find((w) => w.id === 'inventory')!;
-  if (pathname.startsWith('/customer-care')) return WORKSPACES.find((w) => w.id === 'customer-care')!;
-  if (pathname.startsWith('/marketing')) return WORKSPACES.find((w) => w.id === 'content-os')!;
-  if (pathname.startsWith('/dashboard')) return WORKSPACES.find((w) => w.id === 'executive')!;
-  if (pathname.startsWith('/master')) return WORKSPACES.find((w) => w.id === 'master')!;
-  return WORKSPACES[0];
+  const last = pathname.split('/').filter(Boolean).pop() ?? '';
+  return [last.replace(/-/g, ' ')];
 }
 
 export function ClientWrapper({ children }: { children: React.ReactNode }) {
@@ -458,9 +290,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
   const [hasMounted, setHasMounted] = useState(false);
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const [outreachModalOpen, setOutreachModalOpen] = useState(false);
-  const activeWorkspace = resolveWorkspace(pathname);
+  const crumbs = breadcrumbFor(pathname);
   // Outreach Sequence Generator — hidden gear icon, only in Receivables Recovery,
   // only for the one allowed account. Client-side gate only; the real check
   // (session cookie + allowed email) lives in /api/outreach-generator.
@@ -468,9 +300,9 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
     (pathname?.startsWith('/accounts-receivable') ?? false) &&
     currentUser?.email?.toLowerCase() === OUTREACH_SETTINGS_ALLOWED_EMAIL;
 
-  // Close the workspace dropdown whenever the route changes.
+  // Close the mobile drawer whenever the route changes.
   useEffect(() => {
-    setWorkspaceMenuOpen(false);
+    setMobileSidebarOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -840,125 +672,75 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
               <div className="mobile-sidebar-overlay" onClick={() => setMobileSidebarOpen(false)}></div>
             )}
             
-            {/* macOS Frosted Sidebar Rail */}
+            {/* Sidebar */}
             <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
-              <div className="sidebar-brand" style={{ background: '#FFFFFF', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderBottom: '1px solid var(--separator)' }}>
-                <img className="sidebar-mark" src="/brand/happilo-mark.png" alt="Happilo" style={{ height: '30px', width: 'auto', display: 'block', margin: '0 auto' }} />
-                <img className="sidebar-logo-expanded" src="/brand/happilo-logo-green.png" alt="Happilo" style={{ height: '30px', width: 'auto' }} />
-                <span className="sidebar-logo-expanded" style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: '#00523B', background: '#E3F1E8', padding: '3px 7px', borderRadius: '6px', textTransform: 'uppercase' }}>Growth OS</span>
+              <div className="sidebar-brand">
+                <Link href="/master" style={{ display: 'flex', alignItems: 'center' }}>
+                  <img src="/brand/happilo-logo-green.png" alt="Happilo" style={{ height: '30px', width: 'auto', display: 'block' }} />
+                </Link>
+                <span className="sidebar-brand-tag">Growth OS</span>
               </div>
-              <div
-                className="sidebar-header workspace-switcher-wrapper"
-                style={{
-                  padding: '14px 12px',
-                  boxSizing: 'border-box',
-                  borderBottom: '1px solid var(--separator)',
-                }}
-              >
-                <button
-                  onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
-                  title={`${activeWorkspace.name} — click to switch workspace`}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--glass-border)',
-                    background: workspaceMenuOpen ? 'var(--fill-tertiary)' : 'var(--fill-quaternary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--blue)', color: '#fff' }}>
-                    <activeWorkspace.icon size={15} />
-                  </div>
-                  <div className="sidebar-logo-expanded" style={{ flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontWeight: '800', fontSize: '13px', color: 'var(--label-primary)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.name}</span>
-                    <span style={{ fontSize: '9.5px', color: 'var(--label-tertiary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeWorkspace.tagline}</span>
-                  </div>
-                  <ChevronDown size={14} className="sidebar-logo-expanded" style={{ color: 'var(--label-tertiary)', flexShrink: 0, transform: workspaceMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }} />
-                </button>
-              </div>
-
-              {workspaceMenuOpen && (
-                <>
-                  <div onClick={() => setWorkspaceMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1500 }} />
-                  <div
-                    className="workspace-switcher-menu"
-                    style={{
-                      position: 'fixed',
-                      top: '112px',
-                      left: '32px',
-                      width: '260px',
-                      zIndex: 1501,
-                      background: 'var(--bg-layer1)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: '14px',
-                      boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
-                      padding: '6px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '2px',
-                      maxHeight: '70vh',
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {WORKSPACES.map((ws) => {
-                      const WsIcon = ws.icon;
-                      const isActive = ws.id === activeWorkspace.id;
-                      return (
-                        <button
-                          key={ws.id}
-                          onClick={() => {
-                            setWorkspaceMenuOpen(false);
-                            router.push(ws.homePath);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: '9px 10px',
-                            borderRadius: '9px',
-                            border: 'none',
-                            background: isActive ? 'rgba(31, 175, 116, 0.12)' : 'transparent',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            width: '100%',
-                          }}
-                        >
-                          <div style={{ width: '26px', height: '26px', borderRadius: '7px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isActive ? 'var(--blue)' : 'var(--fill-quaternary)', color: isActive ? '#fff' : 'var(--label-secondary)' }}>
-                            <WsIcon size={13} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--label-primary)' }}>{ws.name}</div>
-                            <div style={{ fontSize: '10.5px', color: 'var(--label-tertiary)' }}>{ws.tagline}</div>
-                          </div>
-                          {isActive && <Check size={14} style={{ color: 'var(--blue)', flexShrink: 0 }} />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
 
               <nav className="sidebar-nav">
-                {activeWorkspace.sections.map((section) => (
-                  <React.Fragment key={section.label}>
-                    <div className="nav-section-label">{section.label}</div>
-                    {section.items.map((item) => {
-                      const ItemIcon = item.icon;
+                {NAV.map((area) => (
+                  <div key={area.label} className="nav-area">
+                    <div className="nav-section-label">{area.label}</div>
+
+                    {(area.links ?? []).map((link) => {
+                      const LinkIcon = link.icon;
                       return (
-                        <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                          <div className={`nav-item ${pathname === item.href ? 'active' : ''}`}>
-                            <ItemIcon size={16} />
-                            <span>{item.label}</span>
-                          </div>
+                        <Link key={link.href} href={link.href} className={`nav-item ${pathIn(pathname, link.href) ? 'active' : ''}`}>
+                          <LinkIcon size={16} />
+                          <span>{link.label}</span>
                         </Link>
                       );
                     })}
-                  </React.Fragment>
+
+                    {(area.modules ?? []).map((mod) => {
+                      const ModIcon = mod.icon;
+                      const inModule = mod.prefix.some((p) => pathIn(pathname, p));
+                      const expanded = openModules[mod.id] ?? inModule;
+                      return (
+                        <div key={mod.id} className={`nav-module ${inModule ? 'in-module' : ''}`}>
+                          <button
+                            type="button"
+                            className="nav-item nav-module-toggle"
+                            onClick={() => setOpenModules((m) => ({ ...m, [mod.id]: !expanded }))}
+                            aria-expanded={expanded}
+                          >
+                            <ModIcon size={16} />
+                            <span>{mod.label}</span>
+                            <ChevronDown size={14} className="nav-chevron" style={{ transform: expanded ? 'rotate(180deg)' : 'none' }} />
+                          </button>
+                          {expanded && (
+                            <div className="nav-module-links">
+                              {mod.links.map((link) => {
+                                const LinkIcon = link.icon;
+                                const inLink = pathIn(pathname, link.match ?? link.href);
+                                return (
+                                  <React.Fragment key={link.href}>
+                                    <Link href={link.href} className={`nav-item nav-sub ${inLink && !link.children ? 'active' : ''} ${inLink && link.children ? 'open' : ''}`}>
+                                      <LinkIcon size={15} />
+                                      <span>{link.label}</span>
+                                    </Link>
+                                    {inLink && link.children && (
+                                      <div className="nav-leaves">
+                                        {link.children.map((c) => (
+                                          <Link key={c.href} href={c.href} className={`nav-leaf ${pathname === c.href ? 'active' : ''}`}>
+                                            {c.label}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 ))}
               </nav>
 
@@ -984,27 +766,13 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                       router.push('/');
                       showToast('Logged out of Happilo Growth OS.', 'info');
                     }}
-                    title="System Logout"
+                    title="Log out"
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--label-secondary)' }}
                   >
                     <LogOut size={14} />
                   </button>
                 </div>
-
-                <div
-                  className="sidebar-meta"
-                  style={{
-                    textAlign: 'center',
-                    fontSize: '9.5px',
-                    lineHeight: 1.5,
-                    color: 'var(--label-tertiary)',
-                    padding: '12px 0 4px',
-                    borderTop: '1px solid var(--separator)',
-                    marginTop: '12px',
-                  }}
-                >
-                  Happilo International Pvt Ltd<br />FSSAI Lic. No. 11222999000365
-                </div>
+                <div className="sidebar-meta">Happilo International Pvt Ltd · FSSAI 11222999000365</div>
               </div>
             </aside>
 
@@ -1025,19 +793,12 @@ export function ClientWrapper({ children }: { children: React.ReactNode }) {
                     <button className="nav-ctrl-btn" onClick={goForward} title="Forward" style={{ border: 'none', background: 'transparent', color: 'var(--label-secondary)' }}><ChevronRight size={16} /></button>
                   </div>
                   <div className="breadcrumb" style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span className="breadcrumb-parent">{activeWorkspace.name}</span>
-                    <span className="breadcrumb-separator">/</span>
-                    <span className="breadcrumb-active" style={{ textTransform: 'capitalize', fontWeight: '600' }}>
-                      {(() => {
-                        const currentItem = activeWorkspace.sections
-                          .flatMap((s) => s.items)
-                          .find((i) => i.href === pathname);
-                        if (currentItem) return currentItem.label;
-                        if (pathname === '/') return 'Dashboard';
-                        const lastSegment = pathname?.split('/').filter(Boolean).pop() ?? 'Dashboard';
-                        return lastSegment.replace(/-/g, ' ');
-                      })()}
-                    </span>
+                    {crumbs.map((c, idx) => (
+                      <React.Fragment key={idx}>
+                        {idx > 0 && <span className="breadcrumb-separator">/</span>}
+                        <span className={idx === crumbs.length - 1 ? 'breadcrumb-active' : 'breadcrumb-parent'} style={idx === crumbs.length - 1 ? { fontWeight: 600, textTransform: 'capitalize' } : undefined}>{c}</span>
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
 
