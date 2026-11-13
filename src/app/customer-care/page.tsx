@@ -112,7 +112,7 @@ const ORDERS: Order[] = [
     pending: [],
   },
   {
-    id: 'HP-48221', customer: 'Aarti Kapoor', city: 'Chandigarh', items: 'Premium Californian Almonds 200g x 1', amount: 319, carrier: 'Delhivery', awb: '39174620255318', payment: 'COD',
+    id: 'HP-48221', customer: 'Aarti Kapoor', city: 'Chandigarh', items: 'Premium Californian Almonds 200g x 1', amount: 299, carrier: 'Delhivery', awb: '39174620255318', payment: 'COD',
     scans: [
       { stage: 'Order placed', where: 'happilo.com', time: '9 Nov, 06:55 pm' },
       { stage: 'Packed', where: 'Bengaluru warehouse', time: '10 Nov, 11:20 am' },

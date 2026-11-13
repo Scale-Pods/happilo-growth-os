@@ -140,7 +140,7 @@ export interface OutreachSequence {
   scheduled_date: string;
   status: string;
   executed_at: string | null;
-  n8n_execution_id: string | null;
+  execution_ref: string | null;
   created_at: string;
   /** Friendly step name, e.g. "Email with catalogue". */
   label?: string;

@@ -52,7 +52,7 @@ export default function LeadsTable({
       ...sequences,
       ...localSteps.map((l) => ({
         id: l.id, lead_id: l.lead_id, outreach_step: 'follow_up', channel: l.channel, scheduled_date: l.at, status: 'scheduled',
-        executed_at: null, n8n_execution_id: null, created_at: l.at, label: l.label, skip_reason: null,
+        executed_at: null, execution_ref: null, created_at: l.at, label: l.label, skip_reason: null,
       })),
     ];
     for (const s of all) {

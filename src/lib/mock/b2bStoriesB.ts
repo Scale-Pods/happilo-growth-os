@@ -323,7 +323,7 @@ export const STORIES_B: Story[] = [
       [9, '17:45', 'o', 'Sure Shilpa. Sample Premium box sent tomorrow by Blue Dart. I will share the AWB.'],
       [8, '14:00', 'o', 'Sample dispatched, AWB 5589 3321 0071. Should reach tomorrow evening.'],
       [6, '12:30', 'i', 'Sample received, the box looks good. VP liked the dates especially. Needs a separate Rs 1,800 box for 80 clients.'],
-      [6, '12:55', 'o', 'Great. For the client box at Rs 1,799 we include Kashmiri saffron tin and walnuts. I will share a quote for 80 boxes.'],
+      [6, '12:55', 'o', 'Great. For the client box at Rs 1,799 we include Premium Fard Dates and walnuts. I will share a quote for 80 boxes.'],
       [3, '16:10', 'i', 'Thanks for the detailed quote. VP is travelling, approval likely by early next week.'],
       [1, '11:00', 'o', 'Hi Shilpa, hope the VP is back. Let me know if you need any change in the quote. Production slot for 12 working days needs a go-ahead by 25 Nov for 15 Dec delivery.'],
     ],

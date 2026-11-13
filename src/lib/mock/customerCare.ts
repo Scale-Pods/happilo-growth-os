@@ -133,7 +133,7 @@ export const INITIAL_SUPPORT_CASES: SupportCase[] = [
       ['customer', '[photo] batch is HP2407B, mfg 09/2026', 171],
     ]),
   mk(3, 'Ananya Rao', 'instagram', 'Pending', 'None', 'High',
-    { product: 'Super Mom\'s Trail Mix 200g', city: 'Bengaluru', tags: ['Allergen query'], assignee: 'Kavya', firstResponseMin: 9 },
+    { product: 'Super Mom\'s Trail Mix 325g', city: 'Bengaluru', tags: ['Allergen query'], assignee: 'Kavya', firstResponseMin: 9 },
     [
       ['customer', 'Is the Super Mom\'s Trail Mix peanut free? my daughter is allergic. also is it made in a facility that handles peanuts?', 260],
       ['agent', 'Hi Ananya, thanks for checking before buying. Super Mom\'s Trail Mix has almonds, cashews, raisins, pumpkin and watermelon seeds - no peanuts in the recipe. But the pack carries a "may contain traces of peanuts and other tree nuts" line because our facility handles them.', 251, 'Kavya'],
@@ -161,7 +161,7 @@ export const INITIAL_SUPPORT_CASES: SupportCase[] = [
       ['customer', 'Uploaded just now', 470],
     ]),
   mk(7, 'Pooja Nair', 'blinkit', 'Open', 'None', 'Normal',
-    { orderId: 'BLK-7720914', product: 'Peri Peri Makhana 60g', city: 'Gurugram', tags: ['Missing item', 'Quick commerce'], assignee: 'Arjun', firstResponseMin: 7 },
+    { orderId: 'BLK-7720914', product: 'Peri Peri Makhana 55g', city: 'Gurugram', tags: ['Missing item', 'Quick commerce'], assignee: 'Arjun', firstResponseMin: 7 },
     [
       ['customer', 'Got my Blinkit order but Peri Peri Makhana is missing from the bag. Charged for 2 packs, got 1.', 55],
       ['agent', 'Sorry Pooja, since the pack is packed at the dark store this goes through Blinkit first. I have shared your order details with their partner team asking for a refund of Rs 102. Will update you here.', 42, 'Arjun'],
@@ -215,7 +215,7 @@ export const INITIAL_SUPPORT_CASES: SupportCase[] = [
       ['agent', 'Sorry Gaurav. Could you share clear photos of the pack, front and back, along with the outer box? Needed for the replacement ticket.', 1230, 'Arjun'],
     ]),
   mk(15, 'Tanvi Joshi', 'blinkit', 'Open', 'Escalated - Quality Team', 'High',
-    { orderId: 'BLK-7719502', product: 'International King Medjoul Dates 250g', city: 'Pune', tags: ['Short expiry', 'Quick commerce'], assignee: 'Meghna', firstResponseMin: 10 },
+    { orderId: 'BLK-7719502', product: 'International King Medjoul Dates 200g', city: 'Pune', tags: ['Short expiry', 'Quick commerce'], assignee: 'Meghna', firstResponseMin: 10 },
     [
       ['customer', 'Medjoul dates I got from Blinkit have best before 30 Nov. Thats just 2 weeks. Is this fine?', 210],
       ['agent', 'Hi Tanvi, thats on the shorter side for this product and not what we want customers to receive. Dates stay good beyond that when refrigerated but I understand your concern. I have flagged the dark store stock to our supply team and Blinkit has been asked to refund you.', 188, 'Meghna'],
@@ -247,7 +247,7 @@ export const INITIAL_SUPPORT_CASES: SupportCase[] = [
       ['agent', 'Hi Aarti, checking this now. The free-COD offer is valid above Rs 499, your cart was Rs 479 after the coupon. I can see why the fee applied, but I will ask the team if we can reverse it as a one-off.', 155, 'Kavya'],
     ]),
   mk(20, 'Mohammed Faizan', 'whatsapp', 'Resolved', 'None', 'Low',
-    { product: 'International Ajwa Dates 400g', city: 'Hyderabad', tags: ['Gifting'], assignee: 'Meghna', firstResponseMin: 8, resolutionMin: 55, csat: 5 },
+    { product: 'International Ajwa Dates 500g', city: 'Hyderabad', tags: ['Gifting'], assignee: 'Meghna', firstResponseMin: 8, resolutionMin: 55, csat: 5 },
     [
       ['customer', 'Salam, want to send Ajwa dates to my parents in Malegaon. Can you put a handwritten note?', 4800],
       ['agent', 'Walaikum salam Faizan bhai. We do a printed note, not handwritten - I have noted your message on the order and it will be tucked inside the box. Delivery is 4-5 days to Malegaon.', 4745, 'Meghna'],
@@ -279,7 +279,7 @@ export const INITIAL_SUPPORT_CASES: SupportCase[] = [
       ['customer', 'Fine. Hope it improves', 8400],
     ]),
   mk(25, 'Aman Verma', 'blinkit', 'Resolved', 'None', 'Normal',
-    { orderId: 'BLK-7701188', product: 'Cream & Onion Makhana 60g', city: 'Noida', tags: ['Refund status', 'Quick commerce'], assignee: 'Arjun', firstResponseMin: 9, resolutionMin: 260, csat: 4 },
+    { orderId: 'BLK-7701188', product: 'Cream & Onion Makhana 55g', city: 'Noida', tags: ['Refund status', 'Quick commerce'], assignee: 'Arjun', firstResponseMin: 9, resolutionMin: 260, csat: 4 },
     [
       ['customer', 'Blinkit cancelled my order but Rs 102 for makhana still deducted', 9800],
       ['agent', 'Hi Aman, order cancellations on Blinkit are refunded by them, usually within 24 hrs. I have confirmed with their team that yours is processed - should reflect by tomorrow morning.', 9540, 'Arjun'],

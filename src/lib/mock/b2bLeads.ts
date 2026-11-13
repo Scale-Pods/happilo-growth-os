@@ -406,7 +406,7 @@ ${sigLine}`,
     const stepOfWa = new Map<number, string>();
     const stepOfEm = new Map<number, string>();
 
-    const addSeq = (s: Omit<OutreachSequence, 'id' | 'n8n_execution_id'>) => outreachSequences.push({ ...s, id: `seq-${++seq}`, n8n_execution_id: null });
+    const addSeq = (s: Omit<OutreachSequence, 'id' | 'execution_ref'>) => outreachSequences.push({ ...s, id: `seq-${++seq}`, execution_ref: null });
 
     for (const c of CADENCE) {
       const planned = day0 + c.off * DAY;
